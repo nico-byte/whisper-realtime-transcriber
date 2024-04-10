@@ -1,0 +1,26 @@
+numpy==1.21.6 # 1.21.6 is desired by TTS
+sounddevice
+ffmpeg-python
+soundfile
+--find-links https://download.pytorch.org/whl/cu118/torch_stable.html
+torch==2.0.1+cu118
+torchvision==0.15.2
+torchaudio==2.0.2
+transformers==4.30.0
+espeakng
+aiohttp
+datetime
+asyncio
+nltk
+text2num
+wikipedia
+tts
+aiogoogletrans
+openai-whisper
+librosa
+pyctcdecode
+num2words
+alive-progress
+pytz
+
+# TTS: https://www.youtube.com/watch?v=zRaDe08cUIk

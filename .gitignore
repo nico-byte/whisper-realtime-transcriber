@@ -1,0 +1,6 @@
+/.idea/
+/models
+/.pytest_cache
+*.wav
+__pycache__/
+./vscode
