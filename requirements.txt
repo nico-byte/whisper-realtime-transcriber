@@ -1,4 +1,4 @@
-numpy==1.21.6 # 1.21.6 is desired by TTS
+numpy==1.25 # 1.21.6 is desired by TTS
 sounddevice
 ffmpeg-python
 soundfile
@@ -14,7 +14,6 @@ asyncio
 nltk
 text2num
 wikipedia
-tts
 aiogoogletrans
 openai-whisper
 librosa

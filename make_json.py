@@ -11,9 +11,6 @@ speakers = ["speaker1",]
 import json
 import os
 
-# from model_eval_script import preprocess_text
-
-
 ground_truth = {
     'wetter': [
         "Südlich der Alpen bis Italien runter haben wir momentan kein großes Vergnügen in Sachen Sonnenschein auch der Balkan ist davon betroffen und genervt sind auch viele Urlauber beispielsweise auf Mallorca, wobei es hier jetzt in der nächsten Zeit besser werden wird aber gerade rum um die Adria bleibt es erstmal wechselhaft.",

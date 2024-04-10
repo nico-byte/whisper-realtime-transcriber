@@ -11,7 +11,7 @@ def dummy_training(device, dtype, learning_rate, timesteps, x, y):
     c = torch.randn((), device=device, dtype=dtype)
     d = torch.randn((), device=device, dtype=dtype)
 
-    for t in range(timesteps):
+    for _ in range(timesteps):
         # Forward pass: compute predicted y
         y_pred = a + b * x + c * x ** 2 + d * x ** 3
 

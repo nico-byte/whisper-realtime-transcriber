@@ -4,17 +4,14 @@ Installationsanleitung für eine env, womit das Projekt unter Windows ausgeführ
     -> https://visualstudio.microsoft.com/downloads/?q=build+tools
     -> https://www.youtube.com/watch?v=zRaDe08cUIk @10:40
 2)
-    vlc media player runterladen/installieren
-    -> https://www.vlc.de/
-3)
     espeakng runterladen/installieren
     -> https://github.com/espeak-ng/espeak-ng/blob/master/docs/guide.md#windows
-4)
+3)
     cuda toolkit 10.1 runterladen/installieren
     -> https://developer.nvidia.com/cuda-10.1-download-archive-base
     danach Grafikkartentreiber aktualisieren
     evtl. muss man sich als developer registrieren bei nVidia (dauert 10 Minuten)
-5)
+4)
     conda env mit der environment.yaml aus diesem repo erstellen
     davor in der letzten Zeile den Pfad, in dem das env installiert werden soll ändern bzw. auf seine location anpassen,
     wo die eigenen env's liegen

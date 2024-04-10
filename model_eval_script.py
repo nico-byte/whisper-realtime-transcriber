@@ -22,7 +22,7 @@ from num2words import num2words
 
 device = set_device()
 
-speakers = [""]
+speakers = ["speaker1",]
 
 
 def preprocess_text(text):
@@ -325,6 +325,19 @@ def run_models(data, model_type, model_identifiers, waveform, audio_file, y, cat
     return data
 
 
+def load_metrics_from_file(filename):
+    try:
+        with open(filename, 'r', encoding='utf-8') as file:
+            metrics_data = json.load(file)
+            return metrics_data.copy()
+    except FileNotFoundError:
+        print(f"File {filename} not found.")
+        return None
+    except json.JSONDecodeError:
+        print(f"Error decoding JSON from {filename}.")
+        return None
+
+
 def main():
     """
     # This function is responsible for evaluating the models
@@ -353,37 +366,18 @@ def main():
             'facebook/mms-1b-fl102'
         ]
     }
-    
-    metrics_file = {
-        'metrics': [
-            {
-                'model_type1': [
-                    {
-                        'all_errors': [],
-                        'all_wer': [],
-                        'all_token_count': [],
-                        'runtime_values': [],
-                        'avg_runtime': 0,
-                        'avg_errors': 0,
-                        'avg_token_count': 0,
-                        'avg_wer': 0,
-                    }
-                ],
-                'model_type2': [
-                    {
-                        'all_errors': [],
-                        'all_wer': [],
-                        'all_token_count': [],
-                        'runtime_values': [],
-                        'avg_runtime': 0,
-                        'avg_errors': 0,
-                        'avg_token_count': 0,
-                        'avg_wer': 0,
-                    }
-                ],
-            }
-        ]
-    }
+
+    # Load the metrics data
+    metrics_file_path = './metrics_template.json'  # Adjust the path if your file is in a different directory
+    metrics_file = load_metrics_from_file(metrics_file_path)
+
+    if metrics_file is not None:
+        print("Metrics data loaded successfully.")
+        # You can now work with the metrics_data dictionary in your script
+        # For example, print it out
+        # print(json.dumps(metrics_file, indent=4))
+    else:
+        print("Failed to load metrics file.")
 
     # create lists containing the speakers and categories
     # the lists are updated to avoid overwriting our existing data

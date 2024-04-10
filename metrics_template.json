@@ -7,11 +7,11 @@
           "all_errors": [],
           "all_wer": [],
           "all_token_count": [],
-          "avg_errors": 0.0,
-          "avg_wer": 0.0,
-          "avg_token_count": 0.0,
+          "avg_errors": 999,
+          "avg_wer": 999,
+          "avg_token_count": 999,
           "runtime_values": [],
-          "avg_runtime": 0.0
+          "avg_runtime": 999
         },
         {
           "model": "bofenghuang/whisper-medium-cv11-german",
