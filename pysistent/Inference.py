@@ -10,8 +10,8 @@ from scipy.io.wavfile import write as write_wav
 
 
 class Inference(Model):
-    async def __ainit__(self, model_task="transcribe", model_type="vanilla", model_size="base", device=None):
-        await super(Inference, self).__ainit__(model_task, model_type, model_size, device)
+    def __init__(self, model_task="transcribe", model_type="vanilla", model_size="base", device=None):
+        super(Inference, self).__init__(model_task, model_type, model_size, device)
         available_model_tasks = ["transcribe", "tts"]
         available_model_types = ["vanilla", "pretrained"]
         available_model_sizes = ["base", "small", "medium", "large"]
@@ -23,7 +23,7 @@ class Inference(Model):
         self.model_size = "small" if model_size == "base" and self.model_type == "pretrained" else model_size
         
         if device is None:
-            self.device = await self.set_device()
+            self.device = self.set_device()
         elif device in ["cpu", "cuda", "mps"]:
             try:
                 self.device = torch.device(device)
@@ -38,36 +38,31 @@ class Inference(Model):
         
         self.path_to_file = 'tts_output.wav'
 
-    async def run(self, audio_data=None, text=None):
+    def run(self, audio_data=None, text=None):
         if self.model_task == "tts":
-            await self.run_tts(text)
+            self.run_tts(text)
         
         elif self.model_task == "transcribe" and self.model_type == "vanilla":
-            await self.run_vanilla(audio_data)
+            self.run_vanilla(audio_data)
             
         elif self.model_task == "transcribe" and self.model_type == "pretrained":
-            await self.run_pretrained(audio_data)
+            self.run_pretrained(audio_data)
         
-        await self.preprocess()
+        self.preprocess()
             
-    async def run_tts(self, text):
+    def run_tts(self, text):
         # Running the TTS
         audio_array = generate_audio(text)
-        
-        # input_features = self.processor(text, return_tensors="pt", voice_preset="v2/de_speaker_2")
-        # audio_array = self.speech_model.generate(**input_features)
-        # sample_rate = self.speech_model.generation_config.sample_rate
-        # torchaudio.save(self.path_to_file, audio_array.squeeze(1), SAMPLE_RATE)
         write_wav(self.path_to_file, SAMPLE_RATE, audio_array)
     
-    async def run_vanilla(self, audio_data):
+    def run_vanilla(self, audio_data):
         audio_data_transformed = audio_data.flatten().astype(np.float32) / 32768.0
         # transcribe the time series
         transcript = self.speech_model.transcribe(audio_data_transformed, language="de")
         
         self.transcript = transcript['text']
     
-    async def run_pretrained(self, audio_data):
+    def run_pretrained(self, audio_data):
         audio_data_transformed = audio_data.flatten().astype(np.float32) / 32768.0
         # Transform the waveform into the required format
         waveform = torch.from_numpy(audio_data_transformed)
@@ -80,5 +75,5 @@ class Inference(Model):
 
         self.transcript = transcript
         
-    async def preprocess(self):
-        self.processed_transcript = await asyncio.to_thread(preprocess_text, self.transcript)
+    def preprocess(self):
+        self.processed_transcript = preprocess_text(self.transcript)
