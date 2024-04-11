@@ -11,7 +11,7 @@ class InputStreamGenerator:
     async def __init__(self, samplerate, blocksize, silence_ratio, adjustment_time):
         self.SAMPLERATE = samplerate
         self.BLOCKSIZE = blocksize
-        self.SILENCE_THRESHOLD = await self.set_silence_threshold()
+        self.SILENCE_THRESHOLD = None
         self.SILENCE_RATIO = silence_ratio
         self.ADJUSTMENT_TIME = adjustment_time
         
