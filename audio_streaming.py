@@ -14,7 +14,7 @@ import sounddevice as sd
 import torch
 
 from transformers import AutoProcessor, AutoModelForSpeechSeq2Seq
-from text_processing import preprocess_text
+from pysistent.text_processing import preprocess_text
 from interactions import jokes, current_time, current_datetime, get_weather, failure
 from pytorch_installation_val import set_device
 from timeit import default_timer as timer

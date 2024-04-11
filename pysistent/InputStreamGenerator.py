@@ -3,24 +3,22 @@ import sounddevice as sd
 import asyncio
 import warnings
 
+from async_class import AsyncClass
 
-class InputStreamGenerator:
+
+class InputStreamGenerator(AsyncClass):
     """
     Represents a generator that produces an input stream of audio data.
     """
-    async def __init__(self, samplerate, blocksize, silence_ratio, adjustment_time):
+    async def __ainit__(self, samplerate, blocksize, silence_ratio, adjustment_time):
         self.SAMPLERATE = samplerate
         self.BLOCKSIZE = blocksize
         self.SILENCE_THRESHOLD = None
         self.SILENCE_RATIO = silence_ratio
         self.ADJUSTMENT_TIME = adjustment_time
         
-        self.wakeword = True
-        self.asr = False
-        
         self.global_ndarray = None
-        self.wakeword_global_ndarray = None
-        self.asr_global_ndarray = None
+        self.temp_ndarray = None
 
     async def generate(self):
         """
@@ -55,7 +53,7 @@ class InputStreamGenerator:
             indata_flattened = abs(indata.flatten())
 
             # discard buffers that contain mostly silence
-            if np.nonzero(indata_flattened > self.SILENCE_THRESHOLD).size < self.SILENCE_RATIO:
+            if len(np.nonzero(indata_flattened > self.SILENCE_THRESHOLD)[0]) < self.SILENCE_RATIO:
                 continue
 
             if self.global_ndarray is not None:
@@ -64,15 +62,12 @@ class InputStreamGenerator:
                 self.global_ndarray = indata
 
             # concatenate buffers if the end of the current buffer is not silent and if the chunksize is under 5
-            if np.average((indata_flattened[-100:-1])) > self.SILENCE_THRESHOLD / 15 and indata_flattened.size / 16000 < 2:
+            if np.average((indata_flattened[-100:-1])) > self.SILENCE_THRESHOLD / 15 and len(indata_flattened) / 16000 < 2:
                 continue
             else:
-                if self.wakeword:
-                    self.wakeword_global_ndarray = self.global_ndarray.copy()
-                    self.global_ndarray = None
-                if not self.wakeword and self.asr:
-                    self.asr_global_ndarray = self.global_ndarray.copy()
-                    self.global_ndarray = None
+                self.temp_ndarray = self.global_ndarray.copy()
+                self.global_ndarray = None
+                return self.temp_ndarray
         
     async def set_silence_threshold(self):
         """
@@ -86,7 +81,7 @@ class InputStreamGenerator:
         blocks_processed = 0
         loudness_values = []
 
-        async for indata, _ in self.inputstream_generator():
+        async for indata, _ in self.generate():
             blocks_processed += 1
             indata_flattened = abs(indata.flatten())
 
@@ -99,5 +94,8 @@ class InputStreamGenerator:
                 break
             
         print(f'\nSet SILENCE_THRESHOLD to {self.SILENCE_THRESHOLD}\n')
-        if self.SILENCE_THRESHOLD > 2000:
+        if self.SILENCE_THRESHOLD > 3000:
             warnings.warn(f'SILENCE_THRESHOLD is {self.SILENCE_THRESHOLD}, which is very high. This may cause unprecise results.')
+        elif self.SILENCE_THRESHOLD < 1000:
+            warnings.warn(f'SILENCE_THRESHOLD is {self.SILENCE_THRESHOLD}, which is very low. This may cause unprecise results.')
+            self.SILENCE_THRESHOLD = 1000
