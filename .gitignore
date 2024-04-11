@@ -4,4 +4,4 @@
 *.wav
 __pycache__/
 ./vscode
-**/tmpdir_**/
+**/tmp**/
