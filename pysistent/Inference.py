@@ -33,6 +33,8 @@ class Inference(Model):
         
         self.transcript = ""
         self.processed_transcript = ""
+        
+        self.path_to_file = 'tts_output.wav'
 
     async def run(self, audio_data=None, text=None):
         if self.model_task == "tts":
@@ -52,7 +54,7 @@ class Inference(Model):
         # Running Vocoder (spectrogram-to-waveform)
         waveforms = self.processor.decode_batch(mel_output)
         # Save the waverform
-        torchaudio.save('tts_output.wav', waveforms.squeeze(1), 22050)
+        torchaudio.save(self.path_to_file, waveforms.squeeze(1), 22050)
     
     async def run_vanilla(self, audio_data):
         audio_data_transformed = audio_data.flatten().astype(np.float32) / 32768.0

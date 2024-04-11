@@ -2,6 +2,7 @@ import numpy as np
 import sounddevice as sd
 import asyncio
 import warnings
+import time
 
 from async_class import AsyncClass
 
@@ -38,7 +39,7 @@ class InputStreamGenerator(AsyncClass):
                 indata, status = await q_in.get()
                 yield indata, status
                 
-    async def process(self):
+    async def record(self):
         """
         Processes audio input streams to detect voice activity and manage buffer concatenation.
     
@@ -67,6 +68,7 @@ class InputStreamGenerator(AsyncClass):
             else:
                 self.temp_ndarray = self.global_ndarray.copy()
                 self.global_ndarray = None
+                self.temp_ndarray[self.temp_ndarray != 0]
                 return self.temp_ndarray
         
     async def set_silence_threshold(self):
