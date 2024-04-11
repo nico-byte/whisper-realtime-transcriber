@@ -4,6 +4,4 @@
 *.wav
 __pycache__/
 ./vscode
-./pysistent/tmpdir__tts/
-./pysistent/tmpdir__vocoder/
-./tmpdur_tts/
+**/tmpdir_**/
