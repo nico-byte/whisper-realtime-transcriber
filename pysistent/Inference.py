@@ -5,6 +5,8 @@ import torchaudio
 
 from Model import Model
 from text_processing import preprocess_text
+from bark import SAMPLE_RATE, generate_audio
+from scipy.io.wavfile import write as write_wav
 
 
 class Inference(Model):
@@ -50,11 +52,13 @@ class Inference(Model):
             
     async def run_tts(self, text):
         # Running the TTS
-        mel_output, _, __ = self.speech_model.encode_text(text)
-        # Running Vocoder (spectrogram-to-waveform)
-        waveforms = self.processor.decode_batch(mel_output)
-        # Save the waverform
-        torchaudio.save(self.path_to_file, waveforms.squeeze(1), 22050)
+        audio_array = generate_audio(text)
+        
+        # input_features = self.processor(text, return_tensors="pt", voice_preset="v2/de_speaker_2")
+        # audio_array = self.speech_model.generate(**input_features)
+        # sample_rate = self.speech_model.generation_config.sample_rate
+        # torchaudio.save(self.path_to_file, audio_array.squeeze(1), SAMPLE_RATE)
+        write_wav(self.path_to_file, SAMPLE_RATE, audio_array)
     
     async def run_vanilla(self, audio_data):
         audio_data_transformed = audio_data.flatten().astype(np.float32) / 32768.0

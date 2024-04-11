@@ -39,7 +39,7 @@ class InputStreamGenerator(AsyncClass):
                 indata, status = await q_in.get()
                 yield indata, status
                 
-    async def record(self):
+    async def record(self, duration):
         """
         Processes audio input streams to detect voice activity and manage buffer concatenation.
     
@@ -50,6 +50,7 @@ class InputStreamGenerator(AsyncClass):
         for either wake word detection or ASR processing, ensuring efficient memory usage and
         real-time processing capabilities.
         """
+        start_time = time.monotonic()
         async for indata, _ in self.generate():
             indata_flattened = abs(indata.flatten())
 
@@ -58,17 +59,16 @@ class InputStreamGenerator(AsyncClass):
                 continue
 
             if self.global_ndarray is not None:
-                self.global_ndarray = np.concatenate((self.global_ndarray, indata), dtype='int16')
+                self.global_ndarray = np.concatenate((self.global_ndarray, indata), dtype=np.int16)
             else:
                 self.global_ndarray = indata
 
             # concatenate buffers if the end of the current buffer is not silent and if the chunksize is under 5
-            if np.average((indata_flattened[-100:-1])) > self.SILENCE_THRESHOLD / 15 and len(indata_flattened) / 16000 < 2:
+            if (np.average((indata_flattened[-100:-1])) > self.SILENCE_THRESHOLD / 15 and len(indata_flattened) / 16000 < 2) or time.monotonic() - start_time < duration:
                 continue
             else:
-                self.temp_ndarray = self.global_ndarray.copy()
+                self.temp_ndarray = self.global_ndarray[self.global_ndarray != 0]
                 self.global_ndarray = None
-                self.temp_ndarray[self.temp_ndarray != 0]
                 return self.temp_ndarray
         
     async def set_silence_threshold(self):

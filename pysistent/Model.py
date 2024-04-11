@@ -2,9 +2,7 @@ import whisper
 import torch
 import asyncio
 
-from transformers import AutoProcessor, AutoModelForSpeechSeq2Seq
-from speechbrain.inference import Tacotron2
-from speechbrain.inference.vocoders import HIFIGAN
+from transformers import AutoProcessor, AutoModelForSpeechSeq2Seq, BarkModel
 from async_class import AsyncClass
 
 class Model(AsyncClass):
@@ -29,15 +27,12 @@ class Model(AsyncClass):
         self.processor = processor
     
     async def load_tts(self):
-        tacotron2 = Tacotron2.from_hparams(source="padmalcom/tts-tacotron2-german", savedir="tmpdir_tts")
-        hifi_gan = HIFIGAN.from_hparams(source="speechbrain/tts-hifigan-ljspeech", savedir="tmpdir_vocoder")
-        
-        self.speech_model = tacotron2
-        self.processor = hifi_gan
+        self.speech_model = BarkModel.from_pretrained("suno/bark-small")
+        self.processor = AutoProcessor.from_pretrained("suno/bark-small")
     
     async def load(self):
         if self.model_task == "tts":
-            await self.load_tts()
+            return None
         elif self.model_type == "pretrained":
             await self.load_pretrained()
         elif self.model_type == "vanilla":

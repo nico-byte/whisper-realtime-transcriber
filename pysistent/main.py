@@ -4,9 +4,12 @@ import sys
 from Inference import Inference
 from InputStreamGenerator import InputStreamGenerator
 from play_audio import play_audio
+from bark import preload_models
 
 
 async def main():
+    # await asyncio.to_thread(preload_models())
+    
     inputstream_generator = await InputStreamGenerator(samplerate=16000, blocksize=24678, silence_ratio=1000, adjustment_time=5)
     print("Successfully loaded inputsream generator.")
     
@@ -27,7 +30,7 @@ async def main():
     
     while True:
         print("Listening...")
-        audio_data = await inputstream_generator.record()
+        audio_data = await inputstream_generator.record(2)
         print(audio_data)
         
         await wakeword_model.run(audio_data=audio_data)
@@ -36,7 +39,7 @@ async def main():
         
         if "thorsten" in wakeword_model.processed_transcript:
             print("Wakeword detected.")
-            audio_data = await inputstream_generator.record()
+            audio_data = await inputstream_generator.record(7)
             
             await asr_model.run(audio_data=audio_data)
             print("Generated transcript: " + asr_model.transcript)
@@ -51,6 +54,7 @@ async def main():
 if __name__ == '__main__':
     try:
         print("Activating wire...")
+        preload_models()
         asyncio.run(main())
     except KeyboardInterrupt:
         sys.exit('\nInterrupted by user')
