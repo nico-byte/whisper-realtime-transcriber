@@ -6,20 +6,12 @@ soundfile
 torch==2.0.1+cu118
 torchvision==0.15.2
 torchaudio==2.0.2
-transformers==4.30.0
+transformers
+async_class
 espeakng
-aiohttp
-datetime
 asyncio
 nltk
 text2num
-wikipedia
-aiogoogletrans
 openai-whisper
 librosa
-pyctcdecode
 num2words
-alive-progress
-pytz
-
-# TTS: https://www.youtube.com/watch?v=zRaDe08cUIk

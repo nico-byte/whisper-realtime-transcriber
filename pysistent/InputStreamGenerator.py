@@ -2,7 +2,6 @@ import numpy as np
 import sounddevice as sd
 import asyncio
 import warnings
-import time
 
 from async_class import AsyncClass
 
@@ -10,13 +9,14 @@ from async_class import AsyncClass
 class InputStreamGenerator(AsyncClass):
     """
     Represents a generator that produces an input stream of audio data.
+    https://github.com/tobiashuttinger/openai-whisper-realtime/blob/main/openai-whisper-realtime.py
     """
-    async def __ainit__(self, samplerate, blocksize, silence_ratio, adjustment_time):
+    async def __ainit__(self, samplerate: int, blocksize: int, silence_ratio: int, adjustment_time: int, silence_threshold: int):
         self.SAMPLERATE = samplerate
         self.BLOCKSIZE = blocksize
-        self.SILENCE_THRESHOLD = 1000
         self.SILENCE_RATIO = silence_ratio
         self.ADJUSTMENT_TIME = adjustment_time
+        self.SILENCE_THRESHOLD = silence_threshold
         
         self.global_ndarray = None
         self.temp_ndarray = None
@@ -38,38 +38,6 @@ class InputStreamGenerator(AsyncClass):
             while True:
                 indata, status = await q_in.get()
                 yield indata, status
-                
-    async def record(self, duration):
-        """
-        Processes audio input streams to detect voice activity and manage buffer concatenation.
-    
-        This asynchronous method iterates over generated audio chunks, applying a silence detection
-        algorithm to filter out mostly silent buffers. It concatenates non-silent buffers into a global
-        array, handling them differently based on the presence of a wake word or the activation of
-        automatic speech recognition (ASR). The method dynamically adjusts its behavior to optimize
-        for either wake word detection or ASR processing, ensuring efficient memory usage and
-        real-time processing capabilities.
-        """
-        start_time = time.monotonic()
-        async for indata, _ in self.generate():
-            indata_flattened = abs(indata.flatten())
-
-            # discard buffers that contain mostly silence
-            if len(np.nonzero(indata_flattened > self.SILENCE_THRESHOLD)[0]) < self.SILENCE_RATIO:
-                continue
-
-            if self.global_ndarray is not None:
-                self.global_ndarray = np.concatenate((self.global_ndarray, indata), dtype=np.int16)
-            else:
-                self.global_ndarray = indata
-
-            # concatenate buffers if the end of the current buffer is not silent and if the chunksize is under 5
-            if (np.average((indata_flattened[-100:-1])) > self.SILENCE_THRESHOLD / 15 and len(indata_flattened) / 16000 < 2) or time.monotonic() - start_time < duration:
-                continue
-            else:
-                self.temp_ndarray = self.global_ndarray[self.global_ndarray != 0]
-                self.global_ndarray = None
-                return self.temp_ndarray
         
     async def set_silence_threshold(self):
         """
@@ -92,12 +60,7 @@ class InputStreamGenerator(AsyncClass):
 
             # Stop recording after ADJUSTMENT_TIME seconds
             if blocks_processed >= self.ADJUSTMENT_TIME * self.SAMPLERATE / self.BLOCKSIZE:
-                self.SILENCE_THRESHOLD = int(np.mean(loudness_values) * self.SILENCE_RATIO)
+                self.SILENCE_THRESHOLD = int((np.mean(loudness_values) * self.SILENCE_RATIO) / 15)
                 break
             
         print(f'\nSet SILENCE_THRESHOLD to {self.SILENCE_THRESHOLD}\n')
-        if self.SILENCE_THRESHOLD > 3000:
-            warnings.warn(f'SILENCE_THRESHOLD is {self.SILENCE_THRESHOLD}, which is very high. This may cause unprecise results.')
-        elif self.SILENCE_THRESHOLD < 1000:
-            warnings.warn(f'SILENCE_THRESHOLD is {self.SILENCE_THRESHOLD}, which is very low. This may cause unprecise results.')
-            self.SILENCE_THRESHOLD = 1000

@@ -1,3 +1,5 @@
+import sounddevice as sd
+import soundfile as sf
 import re
 import string
 import nltk
@@ -6,8 +8,11 @@ from num2words import num2words
 from nltk.corpus import stopwords
 from nltk.tokenize import WordPunctTokenizer
 
-
-nltk.download('stopwords')
+def play_audio(path_to_file: str):
+    fs1, x = sf.read(path_to_file, dtype='float32')
+    sd.play(fs1, x)
+    sd.wait()
+    sd.stop()
 
 
 def preprocess_text(text):
@@ -16,6 +21,7 @@ def preprocess_text(text):
     """
 
     # Identify and convert times
+    nltk.download('stopwords', quiet=True)
     text = text.lower()
     time_pattern = r"\b\d{1,2}:\d{2}\b"
     times = re.findall(time_pattern, text)
