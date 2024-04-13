@@ -1,11 +1,11 @@
 import asyncio
 import sys
 
-from pysistent import LiveAudioTranscriber
+from pysistent.LiveAudioTranscriber import LiveAudioTranscriber
 
 
 async def main():        
-    asr_model = await LiveAudioTranscriber(model_task="transcribe", model_type="vanilla", model_size="small", device="cuda")
+    asr_model = await LiveAudioTranscriber(model_type="vanilla", model_size="small", device="cuda")
     load_model = asyncio.to_thread(asr_model.load)
     await load_model
     

@@ -8,16 +8,32 @@ from num2words import num2words
 from nltk.corpus import stopwords
 from nltk.tokenize import WordPunctTokenizer
 
+
 def play_audio(path_to_file: str):
+    """Plays the audio file located at the specified path.
+
+    Args:
+        path_to_file (str): The path to the audio file to be played.
+    """
     fs1, x = sf.read(path_to_file, dtype='float32')
     sd.play(fs1, x)
     sd.wait()
     sd.stop()
 
 
-def preprocess_text(text):
-    """
-    # This function is responsible for preprocessing the text, to ensure consistency in our data
+def preprocess_text(text: str) -> list:
+    """Preprocesses the given text by performing the following steps:
+    
+    1. Identifies and converts times in the text to their German word equivalents.
+    2. Removes punctuation while preserving German umlauts.
+    3. Converts numbers in the text to their German word equivalents.
+    4. Tokenizes the text and removes German stop words.
+
+    Args:
+        text (str): The text to be preprocessed.
+
+    Returns:
+        list[str]: The preprocessed tokens.
     """
 
     # Identify and convert times

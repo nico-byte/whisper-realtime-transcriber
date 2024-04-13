@@ -5,36 +5,59 @@ from .Inference import Inference
 from .InputStreamGenerator import InputStreamGenerator
 
 class LiveAudioTranscriber(Inference, InputStreamGenerator):
-    async def __ainit__(self, model_task: str="transcribe", model_type: str="pretrained", model_size: str="small", device=None):
-        super().__init__(model_task, model_type, model_size, device)
-        self.check_params(model_task, model_type, model_size, device)
+    """
+    Provides a class for combining the Inference class and InputStreamGenerator class.
+    ----------------------------------------------------------------------------------
+    Paramters
+    ----------
+    model_tpye: str
+        The model_type to use. Default: "pretrained"
+    model_size: str
+        The size of the model to use. Default: "small"
+    device: str
+        The device to use for PyTorch operations. Default: None
+    samplerate: int
+        The samplerate to use for the input stream. Default: 16000
+    blocksize: int
+        The size of the blocks to use for the input stream. Default: 8000
+    silence_ratio: int
+        The max amount of silent values in one block. Default: 3000
+    ajustment_time: int
+        The duration used for generating the silence_threshold. Default: 5
+    silence_threshold: int
+        If it is not desired to auto generate a silence_threshold, set this value to a desired value. Default: 1500/15
+    """
+    async def __ainit__(self, model_type: str="pretrained", model_size: str="small", device: str=None, 
+                        samplerate: int=16000, blocksize: int=8000, silence_ratio: int=3000, adjustment_time: int=5, silence_threshold: int=1500/15):
+        super().__init__(model_type, model_size, device)
+        self.check_params(model_type, model_size, device)
         
-        self.transcript = ""
-        self.processed_transcript = ""
+        self.transcript: str = ""
+        self.processed_transcript: str = ""
         
-        self.SAMPLERATE = 16000
-        self.BLOCKSIZE = 8000
-        self.SILENCE_RATIO = 2000
-        self.ADJUSTMENT_TIME = 5
-        self.SILENCE_THRESHOLD = 1500
+        self.SAMPLERATE = samplerate
+        self.BLOCKSIZE = blocksize
+        self.SILENCE_RATIO = silence_ratio
+        self.ADJUSTMENT_TIME = adjustment_time
+        self.SILENCE_THRESHOLD = silence_threshold
         
-        self.global_ndarray = None
-        self.temp_ndarray = None
+        self.global_ndarray: np.ndarray = None
+        self.temp_ndarray: np.ndarray = None
         
     async def transcribe(self):
-        """
-        Processes audio input streams to detect voice activity and manage buffer concatenation.
-        This asynchronous method iterates over generated audio chunks, applying a silence detection
-        algorithm to filter out mostly silent buffers. It concatenates non-silent buffers into a global
-        array, handling them differently based on the presence of a wake word or the activation of
-        automatic speech recognition (ASR). The method dynamically adjusts its behavior to optimize
-        for either wake word detection or ASR processing, ensuring efficient memory usage and
-        real-time processing capabilities.
+        """Transcribes live audio data by continuously processing audio buffers and generating a transcript.
+
+        This method is responsible for the following:
+        - Generating audio data using the `generate()` method.
+        - Filtering out audio buffers that contain mostly silence.
+        - Concatenating non-silent audio buffers into a larger buffer.
+        - Running inference on the accumulated audio buffer and printing the transcription.
+        - Resetting the accumulated audio buffer when it exceeds a certain size.
         """
         print("Generating transcript...")
         
         async for indata, _ in self.generate():
-            indata_flattened = abs(indata.flatten())
+            indata_flattened: np.ndarray = abs(indata.flatten())
             # discard buffers that contain mostly silence
             if len(np.nonzero(indata_flattened > self.SILENCE_THRESHOLD)[0]) < self.SILENCE_RATIO:
                 continue
@@ -49,17 +72,21 @@ class LiveAudioTranscriber(Inference, InputStreamGenerator):
                 self.temp_ndarray = self.global_ndarray.copy()
                 await self.run_inference(self.temp_ndarray)
                 await self.print_transcriptions()
-                self.global_ndarray = None
+                self.global_ndarray: np.ndarray = None
         
         del self.global_ndarray
         del self.temp_ndarray
         
     async def print_transcriptions(self):
-        char_limit = 144  # The character limit after which a new line should start
-        current_line_length = 0  # Current length of the line being printed
+        """Prints the current transcript, ensuring that the output is formatted with a maximum line length of 144 characters. 
+        
+        If the addition of the current transcript would exceed the line length, a new line is started.
+        """
+        char_limit: int = 144  # The character limit after which a new line should start
+        current_line_length: int = 0  # Current length of the line being printed
 
         # Calculate the new line length if the update is added
-        new_line_length = current_line_length + len(self.transcript)
+        new_line_length: int = current_line_length + len(self.transcript)
         if new_line_length > char_limit:
             print()  # Start a new line if the limit is exceeded
             current_line_length = 0  # Reset the current line length
