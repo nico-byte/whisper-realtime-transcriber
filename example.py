@@ -1,7 +1,7 @@
 import asyncio
 import sys
 
-from pysistent.LiveAudioTranscriber import LiveAudioTranscriber
+from transcriber.LiveAudioTranscriber import LiveAudioTranscriber
 
 
 async def main():        
