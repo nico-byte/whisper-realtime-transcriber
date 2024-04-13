@@ -5,18 +5,22 @@ from pysistent.LiveAudioTranscriber import LiveAudioTranscriber
 
 
 async def main():        
-    asr_model = await LiveAudioTranscriber(model_type="vanilla", model_size="small", device="cuda")
+    asr_model = await LiveAudioTranscriber(model_type="vanilla", model_size="medium", device="cuda")
     load_model = asyncio.to_thread(asr_model.load)
     await load_model
     
     await asr_model.set_silence_threshold()
     
-    transcribe_task = asyncio.create_task(asr_model.transcribe())
+    transcribe_task = asyncio.create_task(asr_model.transcribe(loop_forever=False))
     
     try:
-        await transcribe_task
+        transcript, original_tokens, processed_tokens = await transcribe_task
     except asyncio.CancelledError:
         print("Transcribe task cancelled.")
+
+    print(f"Transcript: {transcript}")
+    print(f"Original tokens: {original_tokens}")
+    print(f"Processed tokens: {processed_tokens}")
 
 
 if __name__ == '__main__':

@@ -29,6 +29,7 @@
 <pre><code class="python">import numpy as np
 import asyncio
 
+from typing import Tuple, List
 from .Inference import Inference
 from .InputStreamGenerator import InputStreamGenerator
 
@@ -56,12 +57,13 @@ class LiveAudioTranscriber(Inference, InputStreamGenerator):
         If it is not desired to auto generate a silence_threshold, set this value to a desired value. Default: 1500/15
     &#34;&#34;&#34;
     async def __ainit__(self, model_type: str=&#34;pretrained&#34;, model_size: str=&#34;small&#34;, device: str=None, 
-                        samplerate: int=16000, blocksize: int=8000, silence_ratio: int=3000, adjustment_time: int=5, silence_threshold: int=1500/15):
+                        samplerate: int=16000, blocksize: int=8000, silence_ratio: int=3500, adjustment_time: int=5, silence_threshold: int=1500/15):
         super().__init__(model_type, model_size, device)
         self.check_params(model_type, model_size, device)
         
         self.transcript: str = &#34;&#34;
-        self.processed_transcript: str = &#34;&#34;
+        self.original_tokens: List = []
+        self.processed_tokens: List = []
         
         self.SAMPLERATE = samplerate
         self.BLOCKSIZE = blocksize
@@ -71,39 +73,47 @@ class LiveAudioTranscriber(Inference, InputStreamGenerator):
         
         self.global_ndarray: np.ndarray = None
         self.temp_ndarray: np.ndarray = None
-        
-    async def transcribe(self):
-        &#34;&#34;&#34;Transcribes live audio data by continuously processing audio buffers and generating a transcript.
 
-        This method is responsible for the following:
-        - Generating audio data using the `generate()` method.
-        - Filtering out audio buffers that contain mostly silence.
-        - Concatenating non-silent audio buffers into a larger buffer.
-        - Running inference on the accumulated audio buffer and printing the transcription.
-        - Resetting the accumulated audio buffer when it exceeds a certain size.
-        &#34;&#34;&#34;
-        print(&#34;Generating transcript...&#34;)
+    async def transcribe(self, loop_forever: bool=True, execution_interval: int=3) -&gt; Tuple[List[str], List[str], List[str]]:
+        &#34;&#34;&#34;Transcribes live audio input using the provided Inference and InputStreamGenerator classes.
         
-        async for indata, _ in self.generate():
+        This method listens for audio input, processes it in blocks, and runs inference on the accumulated audio data. 
+        The transcription results are either printed continuously or returned as a tuple.
+        
+        Args:
+            loop_forever (bool): If True, the method will continuously print transcription results.
+            execution_interval (int): The number of seconds between each inference run.
+        
+        Returns:
+            Tuple[List[str], List[str], List[str]]: If loop_forever == True - A tuple containing the transcription, original tokens, and processed tokens.
+        &#34;&#34;&#34;
+        print(&#34;Listening...&#34;)
+        
+        async for (indata, _), silence_counter in enumerate(self.generate()):
             indata_flattened: np.ndarray = abs(indata.flatten())
+            
+            if self.global_ndarray is not None and silence_counter &gt;= (self.SAMPLERATE / self.BLOCKSIZE) * execution_interval:
+                self.temp_ndarray = self.global_ndarray.copy()
+                await self.run_inference(self.temp_ndarray)
+                
+                if loop_forever:
+                    await self.print_transcriptions()
+                    self.global_ndarray: np.ndarray = None
+                else:
+                    await self.run_inference(self.temp_ndarray)
+                    return self.transcript, self.original_tokens, self.processed_tokens
+                
             # discard buffers that contain mostly silence
             if len(np.nonzero(indata_flattened &gt; self.SILENCE_THRESHOLD)[0]) &lt; self.SILENCE_RATIO:
                 continue
             if self.global_ndarray is not None:
+                silence_counter = 0
                 self.global_ndarray = np.concatenate((self.global_ndarray, indata), dtype=&#39;int16&#39;)
             else:
                 self.global_ndarray = indata
             # concatenate buffers if the end of the current buffer is not silent and if the chunksize is under 5
             if (np.average((indata_flattened[-100:-1])) &gt; self.SILENCE_THRESHOLD):
                 continue
-            if (len(self.global_ndarray) &gt; self.BLOCKSIZE * 3):
-                self.temp_ndarray = self.global_ndarray.copy()
-                await self.run_inference(self.temp_ndarray)
-                await self.print_transcriptions()
-                self.global_ndarray: np.ndarray = None
-        
-        del self.global_ndarray
-        del self.temp_ndarray
         
     async def print_transcriptions(self):
         &#34;&#34;&#34;Prints the current transcript, ensuring that the output is formatted with a maximum line length of 144 characters. 
@@ -182,12 +192,13 @@ If it is not desired to auto generate a silence_threshold, set this value to a d
         If it is not desired to auto generate a silence_threshold, set this value to a desired value. Default: 1500/15
     &#34;&#34;&#34;
     async def __ainit__(self, model_type: str=&#34;pretrained&#34;, model_size: str=&#34;small&#34;, device: str=None, 
-                        samplerate: int=16000, blocksize: int=8000, silence_ratio: int=3000, adjustment_time: int=5, silence_threshold: int=1500/15):
+                        samplerate: int=16000, blocksize: int=8000, silence_ratio: int=3500, adjustment_time: int=5, silence_threshold: int=1500/15):
         super().__init__(model_type, model_size, device)
         self.check_params(model_type, model_size, device)
         
         self.transcript: str = &#34;&#34;
-        self.processed_transcript: str = &#34;&#34;
+        self.original_tokens: List = []
+        self.processed_tokens: List = []
         
         self.SAMPLERATE = samplerate
         self.BLOCKSIZE = blocksize
@@ -197,39 +208,47 @@ If it is not desired to auto generate a silence_threshold, set this value to a d
         
         self.global_ndarray: np.ndarray = None
         self.temp_ndarray: np.ndarray = None
-        
-    async def transcribe(self):
-        &#34;&#34;&#34;Transcribes live audio data by continuously processing audio buffers and generating a transcript.
 
-        This method is responsible for the following:
-        - Generating audio data using the `generate()` method.
-        - Filtering out audio buffers that contain mostly silence.
-        - Concatenating non-silent audio buffers into a larger buffer.
-        - Running inference on the accumulated audio buffer and printing the transcription.
-        - Resetting the accumulated audio buffer when it exceeds a certain size.
-        &#34;&#34;&#34;
-        print(&#34;Generating transcript...&#34;)
+    async def transcribe(self, loop_forever: bool=True, execution_interval: int=3) -&gt; Tuple[List[str], List[str], List[str]]:
+        &#34;&#34;&#34;Transcribes live audio input using the provided Inference and InputStreamGenerator classes.
         
-        async for indata, _ in self.generate():
+        This method listens for audio input, processes it in blocks, and runs inference on the accumulated audio data. 
+        The transcription results are either printed continuously or returned as a tuple.
+        
+        Args:
+            loop_forever (bool): If True, the method will continuously print transcription results.
+            execution_interval (int): The number of seconds between each inference run.
+        
+        Returns:
+            Tuple[List[str], List[str], List[str]]: If loop_forever == True - A tuple containing the transcription, original tokens, and processed tokens.
+        &#34;&#34;&#34;
+        print(&#34;Listening...&#34;)
+        
+        async for (indata, _), silence_counter in enumerate(self.generate()):
             indata_flattened: np.ndarray = abs(indata.flatten())
+            
+            if self.global_ndarray is not None and silence_counter &gt;= (self.SAMPLERATE / self.BLOCKSIZE) * execution_interval:
+                self.temp_ndarray = self.global_ndarray.copy()
+                await self.run_inference(self.temp_ndarray)
+                
+                if loop_forever:
+                    await self.print_transcriptions()
+                    self.global_ndarray: np.ndarray = None
+                else:
+                    await self.run_inference(self.temp_ndarray)
+                    return self.transcript, self.original_tokens, self.processed_tokens
+                
             # discard buffers that contain mostly silence
             if len(np.nonzero(indata_flattened &gt; self.SILENCE_THRESHOLD)[0]) &lt; self.SILENCE_RATIO:
                 continue
             if self.global_ndarray is not None:
+                silence_counter = 0
                 self.global_ndarray = np.concatenate((self.global_ndarray, indata), dtype=&#39;int16&#39;)
             else:
                 self.global_ndarray = indata
             # concatenate buffers if the end of the current buffer is not silent and if the chunksize is under 5
             if (np.average((indata_flattened[-100:-1])) &gt; self.SILENCE_THRESHOLD):
                 continue
-            if (len(self.global_ndarray) &gt; self.BLOCKSIZE * 3):
-                self.temp_ndarray = self.global_ndarray.copy()
-                await self.run_inference(self.temp_ndarray)
-                await self.print_transcriptions()
-                self.global_ndarray: np.ndarray = None
-        
-        del self.global_ndarray
-        del self.temp_ndarray
         
     async def print_transcriptions(self):
         &#34;&#34;&#34;Prints the current transcript, ensuring that the output is formatted with a maximum line length of 144 characters. 
@@ -284,52 +303,68 @@ If it is not desired to auto generate a silence_threshold, set this value to a d
 </details>
 </dd>
 <dt id="pysistent.LiveAudioTranscriber.LiveAudioTranscriber.transcribe"><code class="name flex">
-<span>async def <span class="ident">transcribe</span></span>(<span>self)</span>
+<span>async def <span class="ident">transcribe</span></span>(<span>self, loop_forever: bool = True, execution_interval: int = 3) ‑> Tuple[List[str], List[str], List[str]]</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Transcribes live audio data by continuously processing audio buffers and generating a transcript.</p>
-<p>This method is responsible for the following:
-- Generating audio data using the <code>generate()</code> method.
-- Filtering out audio buffers that contain mostly silence.
-- Concatenating non-silent audio buffers into a larger buffer.
-- Running inference on the accumulated audio buffer and printing the transcription.
-- Resetting the accumulated audio buffer when it exceeds a certain size.</p></div>
+<div class="desc"><p>Transcribes live audio input using the provided Inference and InputStreamGenerator classes.</p>
+<p>This method listens for audio input, processes it in blocks, and runs inference on the accumulated audio data.
+The transcription results are either printed continuously or returned as a tuple.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>loop_forever</code></strong> :&ensp;<code>bool</code></dt>
+<dd>If True, the method will continuously print transcription results.</dd>
+<dt><strong><code>execution_interval</code></strong> :&ensp;<code>int</code></dt>
+<dd>The number of seconds between each inference run.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>Tuple[List[str], List[str], List[str]]</code></dt>
+<dd>If loop_forever == True - A tuple containing the transcription, original tokens, and processed tokens.</dd>
+</dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">async def transcribe(self):
-    &#34;&#34;&#34;Transcribes live audio data by continuously processing audio buffers and generating a transcript.
-
-    This method is responsible for the following:
-    - Generating audio data using the `generate()` method.
-    - Filtering out audio buffers that contain mostly silence.
-    - Concatenating non-silent audio buffers into a larger buffer.
-    - Running inference on the accumulated audio buffer and printing the transcription.
-    - Resetting the accumulated audio buffer when it exceeds a certain size.
-    &#34;&#34;&#34;
-    print(&#34;Generating transcript...&#34;)
+<pre><code class="python">async def transcribe(self, loop_forever: bool=True, execution_interval: int=3) -&gt; Tuple[List[str], List[str], List[str]]:
+    &#34;&#34;&#34;Transcribes live audio input using the provided Inference and InputStreamGenerator classes.
     
-    async for indata, _ in self.generate():
+    This method listens for audio input, processes it in blocks, and runs inference on the accumulated audio data. 
+    The transcription results are either printed continuously or returned as a tuple.
+    
+    Args:
+        loop_forever (bool): If True, the method will continuously print transcription results.
+        execution_interval (int): The number of seconds between each inference run.
+    
+    Returns:
+        Tuple[List[str], List[str], List[str]]: If loop_forever == True - A tuple containing the transcription, original tokens, and processed tokens.
+    &#34;&#34;&#34;
+    print(&#34;Listening...&#34;)
+    
+    async for (indata, _), silence_counter in enumerate(self.generate()):
         indata_flattened: np.ndarray = abs(indata.flatten())
+        
+        if self.global_ndarray is not None and silence_counter &gt;= (self.SAMPLERATE / self.BLOCKSIZE) * execution_interval:
+            self.temp_ndarray = self.global_ndarray.copy()
+            await self.run_inference(self.temp_ndarray)
+            
+            if loop_forever:
+                await self.print_transcriptions()
+                self.global_ndarray: np.ndarray = None
+            else:
+                await self.run_inference(self.temp_ndarray)
+                return self.transcript, self.original_tokens, self.processed_tokens
+            
         # discard buffers that contain mostly silence
         if len(np.nonzero(indata_flattened &gt; self.SILENCE_THRESHOLD)[0]) &lt; self.SILENCE_RATIO:
             continue
         if self.global_ndarray is not None:
+            silence_counter = 0
             self.global_ndarray = np.concatenate((self.global_ndarray, indata), dtype=&#39;int16&#39;)
         else:
             self.global_ndarray = indata
         # concatenate buffers if the end of the current buffer is not silent and if the chunksize is under 5
         if (np.average((indata_flattened[-100:-1])) &gt; self.SILENCE_THRESHOLD):
-            continue
-        if (len(self.global_ndarray) &gt; self.BLOCKSIZE * 3):
-            self.temp_ndarray = self.global_ndarray.copy()
-            await self.run_inference(self.temp_ndarray)
-            await self.print_transcriptions()
-            self.global_ndarray: np.ndarray = None
-    
-    del self.global_ndarray
-    del self.temp_ndarray</code></pre>
+            continue</code></pre>
 </details>
 </dd>
 </dl>

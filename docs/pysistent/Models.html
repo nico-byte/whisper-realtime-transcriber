@@ -29,6 +29,7 @@
 <pre><code class="python">import whisper
 import torch
 
+from typing import Dict
 from transformers import AutoProcessor, AutoModelForSpeechSeq2Seq
 
 
@@ -150,7 +151,7 @@ class Models():
     
         This function is used to provide information about the Whisper models that can be used in the application.
         &#34;&#34;&#34;
-        models: dict = {
+        models: Dict = {
             &#34;vanilla whisper&#34;: [&#34;base&#34;, &#34;small&#34;, &#34;medium&#34;, &#34;large&#34;],
             &#34;pretrained whisper&#34;: [&#34;base&#34;, &#34;small&#34;, &#34;medium&#34;, &#34;large-v2&#34;],
         }
@@ -321,7 +322,7 @@ class Models():
     
         This function is used to provide information about the Whisper models that can be used in the application.
         &#34;&#34;&#34;
-        models: dict = {
+        models: Dict = {
             &#34;vanilla whisper&#34;: [&#34;base&#34;, &#34;small&#34;, &#34;medium&#34;, &#34;large&#34;],
             &#34;pretrained whisper&#34;: [&#34;base&#34;, &#34;small&#34;, &#34;medium&#34;, &#34;large-v2&#34;],
         }
@@ -370,7 +371,7 @@ def get_models():
 
     This function is used to provide information about the Whisper models that can be used in the application.
     &#34;&#34;&#34;
-    models: dict = {
+    models: Dict = {
         &#34;vanilla whisper&#34;: [&#34;base&#34;, &#34;small&#34;, &#34;medium&#34;, &#34;large&#34;],
         &#34;pretrained whisper&#34;: [&#34;base&#34;, &#34;small&#34;, &#34;medium&#34;, &#34;large-v2&#34;],
     }

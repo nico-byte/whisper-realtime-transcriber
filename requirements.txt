@@ -1,4 +1,4 @@
-numpy==1.25 # 1.21.6 is desired by TTS
+numpy==1.25
 sounddevice
 ffmpeg-python
 soundfile
@@ -8,7 +8,6 @@ torchvision==0.15.2
 torchaudio==2.0.2
 transformers
 async_class
-espeakng
 asyncio
 nltk
 text2num

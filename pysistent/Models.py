@@ -1,6 +1,7 @@
 import whisper
 import torch
 
+from typing import Dict
 from transformers import AutoProcessor, AutoModelForSpeechSeq2Seq
 
 
@@ -122,7 +123,7 @@ class Models():
     
         This function is used to provide information about the Whisper models that can be used in the application.
         """
-        models: dict = {
+        models: Dict = {
             "vanilla whisper": ["base", "small", "medium", "large"],
             "pretrained whisper": ["base", "small", "medium", "large-v2"],
         }

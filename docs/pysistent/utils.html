@@ -26,70 +26,55 @@
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">import sounddevice as sd
-import soundfile as sf
-import re
+<pre><code class="python">import re
 import string
-import nltk
 
+from typing import Tuple, List
 from num2words import num2words
-from nltk.corpus import stopwords
 from nltk.tokenize import WordPunctTokenizer
 
 
-def play_audio(path_to_file: str):
-    &#34;&#34;&#34;Plays the audio file located at the specified path.
-
-    Args:
-        path_to_file (str): The path to the audio file to be played.
-    &#34;&#34;&#34;
-    fs1, x = sf.read(path_to_file, dtype=&#39;float32&#39;)
-    sd.play(fs1, x)
-    sd.wait()
-    sd.stop()
-
-
-def preprocess_text(text: str) -&gt; list:
-    &#34;&#34;&#34;Preprocesses the given text by performing the following steps:
+def tokenize_text(text: str) -&gt; Tuple[List[str], List[str]]:
+    &#34;&#34;&#34;Tokenizes the given text and performs various transformations, including:
     
-    1. Identifies and converts times in the text to their German word equivalents.
-    2. Removes punctuation while preserving German umlauts.
-    3. Converts numbers in the text to their German word equivalents.
-    4. Tokenizes the text and removes German stop words.
+    - Keeping the original tokens
+    - Converting the text to lowercase
+    - Identifying and converting times to words
+    - Converting numbers to words
+    - Removing punctuation while preserving German umlauts
+    - Stripping whitespace
 
     Args:
         text (str): The text to be preprocessed.
 
     Returns:
-        list[str]: The preprocessed tokens.
+        Tuple[List[str], List[str]]: The original and processed tokens.
     &#34;&#34;&#34;
-
-    # Identify and convert times
-    nltk.download(&#39;stopwords&#39;, quiet=True)
+    # Keep original tokens
+    original_tokens =  WordPunctTokenizer().tokenize(text)
+    
+    # Convert text to lower case
     text = text.lower()
+    # Identify and convert times
     time_pattern = r&#34;\b\d{1,2}:\d{2}\b&#34;
     times = re.findall(time_pattern, text)
     for time in times:
         hours, minutes = map(int, time.split(&#34;:&#34;))
-        time_in_words = num2words(hours, lang=&#39;de&#39;) + &#34; uhr &#34; + num2words(minutes, lang=&#39;de&#39;)
+        time_in_words = num2words(hours, lang=&#39;de&#39;) + &#34; Uhr &#34; + num2words(minutes, lang=&#39;de&#39;)
         text = text.replace(time, time_in_words)
 
+    # Convert numbers to words
+    text = &#39; &#39;.join(num2words(int(word), lang=&#39;de&#39;, ordinal=True) if word.isdigit() else word for word in text.split())
+    
     # Keep German umlauts
     remove_punct_map = {ord(char): None for char in string.punctuation if char not in [&#39;ä&#39;, &#39;ö&#39;, &#39;ü&#39;, &#39;ß&#39;]}
-    # Convert the text to lowercase, remove punctuation and strip white spaces
+    
+    # Remove punctuation and strip white spaces
     text = text.translate(remove_punct_map).strip()
 
-    # Convert numbers to words
-    text = &#39; &#39;.join(num2words(int(word), lang=&#39;de&#39;) if word.isdigit() else word for word in text.split())
+    processed_tokens = WordPunctTokenizer().tokenize(text)
 
-    tokens = WordPunctTokenizer().tokenize(text)
-
-    # Get the list of german stop words
-    german_stop_words = stopwords.words(&#39;german&#39;)
-    # Remove the german stopwords from the list of tokens
-    norm_tokens = [x for x in tokens if x not in german_stop_words]
-
-    return norm_tokens</code></pre>
+    return original_tokens, processed_tokens</code></pre>
 </details>
 </section>
 <section>
@@ -99,43 +84,19 @@ def preprocess_text(text: str) -&gt; list:
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
-<dt id="pysistent.utils.play_audio"><code class="name flex">
-<span>def <span class="ident">play_audio</span></span>(<span>path_to_file: str)</span>
+<dt id="pysistent.utils.tokenize_text"><code class="name flex">
+<span>def <span class="ident">tokenize_text</span></span>(<span>text: str) ‑> Tuple[List[str], List[str]]</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Plays the audio file located at the specified path.</p>
-<h2 id="args">Args</h2>
-<dl>
-<dt><strong><code>path_to_file</code></strong> :&ensp;<code>str</code></dt>
-<dd>The path to the audio file to be played.</dd>
-</dl></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def play_audio(path_to_file: str):
-    &#34;&#34;&#34;Plays the audio file located at the specified path.
-
-    Args:
-        path_to_file (str): The path to the audio file to be played.
-    &#34;&#34;&#34;
-    fs1, x = sf.read(path_to_file, dtype=&#39;float32&#39;)
-    sd.play(fs1, x)
-    sd.wait()
-    sd.stop()</code></pre>
-</details>
-</dd>
-<dt id="pysistent.utils.preprocess_text"><code class="name flex">
-<span>def <span class="ident">preprocess_text</span></span>(<span>text: str) ‑> list</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Preprocesses the given text by performing the following steps:</p>
-<ol>
-<li>Identifies and converts times in the text to their German word equivalents.</li>
-<li>Removes punctuation while preserving German umlauts.</li>
-<li>Converts numbers in the text to their German word equivalents.</li>
-<li>Tokenizes the text and removes German stop words.</li>
-</ol>
+<div class="desc"><p>Tokenizes the given text and performs various transformations, including:</p>
+<ul>
+<li>Keeping the original tokens</li>
+<li>Converting the text to lowercase</li>
+<li>Identifying and converting times to words</li>
+<li>Converting numbers to words</li>
+<li>Removing punctuation while preserving German umlauts</li>
+<li>Stripping whitespace</li>
+</ul>
 <h2 id="args">Args</h2>
 <dl>
 <dt><strong><code>text</code></strong> :&ensp;<code>str</code></dt>
@@ -143,54 +104,54 @@ def preprocess_text(text: str) -&gt; list:
 </dl>
 <h2 id="returns">Returns</h2>
 <dl>
-<dt><code>list[str]</code></dt>
-<dd>The preprocessed tokens.</dd>
+<dt><code>Tuple[List[str], List[str]]</code></dt>
+<dd>The original and processed tokens.</dd>
 </dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def preprocess_text(text: str) -&gt; list:
-    &#34;&#34;&#34;Preprocesses the given text by performing the following steps:
+<pre><code class="python">def tokenize_text(text: str) -&gt; Tuple[List[str], List[str]]:
+    &#34;&#34;&#34;Tokenizes the given text and performs various transformations, including:
     
-    1. Identifies and converts times in the text to their German word equivalents.
-    2. Removes punctuation while preserving German umlauts.
-    3. Converts numbers in the text to their German word equivalents.
-    4. Tokenizes the text and removes German stop words.
+    - Keeping the original tokens
+    - Converting the text to lowercase
+    - Identifying and converting times to words
+    - Converting numbers to words
+    - Removing punctuation while preserving German umlauts
+    - Stripping whitespace
 
     Args:
         text (str): The text to be preprocessed.
 
     Returns:
-        list[str]: The preprocessed tokens.
+        Tuple[List[str], List[str]]: The original and processed tokens.
     &#34;&#34;&#34;
-
-    # Identify and convert times
-    nltk.download(&#39;stopwords&#39;, quiet=True)
+    # Keep original tokens
+    original_tokens =  WordPunctTokenizer().tokenize(text)
+    
+    # Convert text to lower case
     text = text.lower()
+    # Identify and convert times
     time_pattern = r&#34;\b\d{1,2}:\d{2}\b&#34;
     times = re.findall(time_pattern, text)
     for time in times:
         hours, minutes = map(int, time.split(&#34;:&#34;))
-        time_in_words = num2words(hours, lang=&#39;de&#39;) + &#34; uhr &#34; + num2words(minutes, lang=&#39;de&#39;)
+        time_in_words = num2words(hours, lang=&#39;de&#39;) + &#34; Uhr &#34; + num2words(minutes, lang=&#39;de&#39;)
         text = text.replace(time, time_in_words)
 
+    # Convert numbers to words
+    text = &#39; &#39;.join(num2words(int(word), lang=&#39;de&#39;, ordinal=True) if word.isdigit() else word for word in text.split())
+    
     # Keep German umlauts
     remove_punct_map = {ord(char): None for char in string.punctuation if char not in [&#39;ä&#39;, &#39;ö&#39;, &#39;ü&#39;, &#39;ß&#39;]}
-    # Convert the text to lowercase, remove punctuation and strip white spaces
+    
+    # Remove punctuation and strip white spaces
     text = text.translate(remove_punct_map).strip()
 
-    # Convert numbers to words
-    text = &#39; &#39;.join(num2words(int(word), lang=&#39;de&#39;) if word.isdigit() else word for word in text.split())
+    processed_tokens = WordPunctTokenizer().tokenize(text)
 
-    tokens = WordPunctTokenizer().tokenize(text)
-
-    # Get the list of german stop words
-    german_stop_words = stopwords.words(&#39;german&#39;)
-    # Remove the german stopwords from the list of tokens
-    norm_tokens = [x for x in tokens if x not in german_stop_words]
-
-    return norm_tokens</code></pre>
+    return original_tokens, processed_tokens</code></pre>
 </details>
 </dd>
 </dl>
@@ -211,8 +172,7 @@ def preprocess_text(text: str) -&gt; list:
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
-<li><code><a title="pysistent.utils.play_audio" href="#pysistent.utils.play_audio">play_audio</a></code></li>
-<li><code><a title="pysistent.utils.preprocess_text" href="#pysistent.utils.preprocess_text">preprocess_text</a></code></li>
+<li><code><a title="pysistent.utils.tokenize_text" href="#pysistent.utils.tokenize_text">tokenize_text</a></code></li>
 </ul>
 </li>
 </ul>
