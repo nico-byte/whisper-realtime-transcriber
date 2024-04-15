@@ -14,7 +14,7 @@ async def main():
     transcriber = await LiveAudioTranscriber()
     
     # Create a transcribe task
-    transcribe_task = asyncio.create_task(transcriber.transcribe(model=asr_model, loop_forever=False, execution_interval=3))
+    transcribe_task = asyncio.create_task(transcriber.transcribe(model=asr_model, loop_forever=True))
     
     # Execute the task and catch exception
     try:

@@ -15,18 +15,15 @@ class LiveAudioTranscriber(AsyncClass):
     samplerate: int
         The samplerate to use for the input stream. Default: 16000
     blocksize: int
-        The size of the blocks to use for the input stream. Default: 8000
-    silence_ratio: int
-        The max amount of silent values in one block. Default: 3500
+        The size of the blocks to use for the input stream. Default: 24678
     ajustment_time: int
         The duration used for generating the silence_threshold. Default: 5
     silence_threshold: int
         If it is not desired to auto generate a silence_threshold, set this value to a desired value. Default: set_silence_threshold()
     """
-    async def __ainit__(self, samplerate: int=None, blocksize: int=None, silence_ratio: int=None, adjustment_time: int=None, silence_threshold: int=None):
+    async def __ainit__(self, samplerate: int=None, blocksize: int=None, adjustment_time: int=None, silence_threshold: float=None):
         self.SAMPLERATE = 16000 if samplerate is None else samplerate
-        self.BLOCKSIZE = 8000 if blocksize is None else blocksize
-        self.SILENCE_RATIO = 3500 if silence_ratio is None else silence_ratio
+        self.BLOCKSIZE = 24678 if blocksize is None else blocksize
         self.ADJUSTMENT_TIME = 5 if adjustment_time is None else adjustment_time
         
         self.SILENCE_THRESHOLD = silence_threshold
@@ -36,14 +33,10 @@ class LiveAudioTranscriber(AsyncClass):
         
         self.global_ndarray: np.ndarray = None
         self.temp_ndarray: np.ndarray = None
-        
-        self.silence_counter: int = 0
-        
+                
         print(f"Checked inputstream parameters: \n\
             samplerate: {self.SAMPLERATE}\n\
-                blocksize: {self.BLOCKSIZE}\n\
-                    SILENCE_RATIO: {self.SILENCE_RATIO}")
-
+                blocksize: {self.BLOCKSIZE}")
     async def generate(self):
         """Generates an input stream of audio data asynchronously.
     
@@ -65,7 +58,7 @@ class LiveAudioTranscriber(AsyncClass):
                 indata, status = await q_in.get()
                 yield indata, status
     
-    async def transcribe(self, model, loop_forever: bool, execution_interval: int) -> Tuple[List[str], List[str], List[str]]:
+    async def transcribe(self, model, loop_forever: bool) -> Tuple[List[str], List[str], List[str]]:
         """Transcribes live audio input using the provided Inference and InputStreamGenerator classes.
         
         This method listens for audio input, processes it in blocks, and runs inference on the accumulated audio data. 
@@ -84,31 +77,30 @@ class LiveAudioTranscriber(AsyncClass):
         async for indata, _ in self.generate():
             indata_flattened: np.ndarray = abs(indata.flatten())
             
-            if self.global_ndarray is not None and self.silence_counter >= (self.SAMPLERATE / self.BLOCKSIZE) * execution_interval:
-                self.temp_ndarray = self.global_ndarray.copy()
-                self.temp_ndarray = self.temp_ndarray.flatten().astype(np.float32) / 32768.0
-                transcript, original_tokens, processed_tokens =  await model.run_inference(self.temp_ndarray)
-                
-                if loop_forever:
-                    await self.print_transcriptions()
-                    self.global_ndarray: np.ndarray = None
-                else:
-                    return transcript, original_tokens, processed_tokens
-                
             # discard buffers that contain mostly silence
-            if len(np.nonzero(indata_flattened > self.SILENCE_THRESHOLD)[0]) < self.SILENCE_RATIO:
-                self.silence_counter += 1
+            if np.percentile(indata_flattened, 10) <= self.SILENCE_THRESHOLD:
                 continue
             if self.global_ndarray is not None:
-                self.silence_counter = 0
                 self.global_ndarray = np.concatenate((self.global_ndarray, indata), dtype='int16')
             else:
                 self.global_ndarray = indata
             # concatenate buffers if the end of the current buffer is not silent and if the chunksize is under 5
-            if (np.average((indata_flattened[-100:-1])) > self.SILENCE_THRESHOLD):
+            if np.percentile(indata_flattened[-100:-1], 10) > self.SILENCE_THRESHOLD:
                 continue
+            else:
+                self.temp_ndarray = self.global_ndarray.copy()
+                self.temp_ndarray = self.temp_ndarray.flatten().astype(np.float32) / 32768.0
+                await model.run_inference(self.temp_ndarray, self.SAMPLERATE)
+                
+                if loop_forever:
+                    await self.print_transcriptions(model.transcript)
+                    self.global_ndarray: np.ndarray = None
+                    self.temp_ndarray: np.ndarray = None
+                else:
+                    return model.transcript, model.original_tokens, model.processed_tokens
         
-    async def print_transcriptions(self):
+    @staticmethod
+    async def print_transcriptions(transcript):
         """Prints the current transcript, ensuring that the output is formatted with a maximum line length of 77 characters. 
         
         If the addition of the current transcript would exceed the line length, a new line is started.
@@ -117,12 +109,12 @@ class LiveAudioTranscriber(AsyncClass):
         current_line_length: int = 0  # Current length of the line being printed
 
         # Calculate the new line length if the update is added
-        new_line_length: int = current_line_length + len(self.transcript)
+        new_line_length: int = current_line_length + len(transcript)
         if new_line_length > char_limit:
             print()  # Start a new line if the limit is exceeded
             current_line_length = 0  # Reset the current line length
-        print(self.transcript + " ", end='', flush=True)  # Print the update without a newline, flush to ensure it's displayed
-        current_line_length += len(self.transcript) # Update the current line length
+        print(transcript + " ", end='', flush=True)  # Print the update without a newline, flush to ensure it's displayed
+        current_line_length += len(transcript) # Update the current line length
         
     async def set_silence_threshold(self):
         """Automatically sets the silence threshold for the input stream based on the first few seconds of audio data.
@@ -142,8 +134,8 @@ class LiveAudioTranscriber(AsyncClass):
             loudness_values.append(np.mean(indata_flattened))
 
             # Stop recording after ADJUSTMENT_TIME seconds
-            if blocks_processed >= self.ADJUSTMENT_TIME * self.SAMPLERATE / self.BLOCKSIZE:
-                self.SILENCE_THRESHOLD = int((np.mean(loudness_values) * self.SILENCE_RATIO) / 15)
+            if blocks_processed >= self.ADJUSTMENT_TIME * (self.SAMPLERATE / self.BLOCKSIZE):
+                self.SILENCE_THRESHOLD = float(np.percentile(loudness_values, 50))
                 break
             
         print(f'\nSet SILENCE_THRESHOLD to {self.SILENCE_THRESHOLD}\n')
