@@ -1,23 +1,28 @@
 import asyncio
 import sys
 
-from transcriber.LiveAudioTranscriber import LiveAudioTranscriber
+from transcriber.pretrained import PretrainedWhisper
+from transcriber import LiveAudioTranscriber
 
 
 async def main():        
-    asr_model = await LiveAudioTranscriber(model_type="vanilla", model_size="medium", device="cuda")
-    load_model = asyncio.to_thread(asr_model.load)
-    await load_model
+    # Load model config
+    asr_model = await PretrainedWhisper(model_size="small", device="cuda")
+    await asr_model.load()
     
-    await asr_model.set_silence_threshold()
+    # Load transcriber
+    transcriber = await LiveAudioTranscriber()
     
-    transcribe_task = asyncio.create_task(asr_model.transcribe(loop_forever=False))
+    # Create a transcribe task
+    transcribe_task = asyncio.create_task(transcriber.transcribe(model=asr_model, loop_forever=False, execution_interval=3))
     
+    # Execute the task and catch exception
     try:
         transcript, original_tokens, processed_tokens = await transcribe_task
     except asyncio.CancelledError:
         print("Transcribe task cancelled.")
 
+    # Print model output and tokens
     print(f"Transcript: {transcript}")
     print(f"Original tokens: {original_tokens}")
     print(f"Processed tokens: {processed_tokens}")

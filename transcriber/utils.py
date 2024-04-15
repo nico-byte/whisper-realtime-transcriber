@@ -1,5 +1,6 @@
 import re
 import string
+import torch
 
 from typing import Tuple, List
 from num2words import num2words
@@ -32,11 +33,12 @@ def tokenize_text(text: str) -> Tuple[List[str], List[str]]:
     times = re.findall(time_pattern, text)
     for time in times:
         hours, minutes = map(int, time.split(":"))
-        time_in_words = num2words(hours, lang='de') + " Uhr " + num2words(minutes, lang='de')
+        time_in_words = f"{num2words(hours, lang='de')} Uhr {num2words(minutes, lang='de')}"
         text = text.replace(time, time_in_words)
 
     # Convert numbers to words
-    text = ' '.join(num2words(int(word), lang='de', ordinal=True) if word.isdigit() else word for word in text.split())
+    # ordinal numbers will be converted to usual numbers - 2nd will be two
+    text = ' '.join(num2words(int(word), lang='de', ordinal=False) if word.isdigit() else word for word in text.split())
     
     # Keep German umlauts
     remove_punct_map = {ord(char): None for char in string.punctuation if char not in ['ä', 'ö', 'ü', 'ß']}
@@ -47,3 +49,21 @@ def tokenize_text(text: str) -> Tuple[List[str], List[str]]:
     processed_tokens = WordPunctTokenizer().tokenize(text)
 
     return original_tokens, processed_tokens
+
+
+def set_device(device) -> torch.device:
+    """Determines the appropriate device to use for PyTorch operations, prioritizing GPU and MPS (Apple Silicon) devices if available, and falling back to CPU if neither is available.
+
+    Returns:
+        torch.device: The device to use for PyTorch operations.
+    """
+    if device in ["cpu", "cuda", "mps"]:
+        try:
+            device = torch.device(device)
+        except Exception as e:
+            print(e)
+            device = torch.device("cpu")
+    else:
+        device = torch.device("cpu")
+        
+    return device
