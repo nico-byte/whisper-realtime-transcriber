@@ -15,7 +15,7 @@ class LiveAudioTranscriber(AsyncClass):
     samplerate: int
         The samplerate to use for the input stream. Default: 16000
     blocksize: int
-        The size of the blocks to use for the input stream. Default: 24678
+        The size of the blocks to use for the input stream. Default: 4000
     ajustment_time: int
         The duration used for generating the silence_threshold. Default: 5
     silence_threshold: int
@@ -23,7 +23,7 @@ class LiveAudioTranscriber(AsyncClass):
     """
     async def __ainit__(self, samplerate: int=None, blocksize: int=None, adjustment_time: int=None, silence_threshold: float=None):
         self.SAMPLERATE = 16000 if samplerate is None else samplerate
-        self.BLOCKSIZE = 24678 if blocksize is None else blocksize
+        self.BLOCKSIZE = 4000 if blocksize is None else blocksize
         self.ADJUSTMENT_TIME = 5 if adjustment_time is None else adjustment_time
         
         self.SILENCE_THRESHOLD = silence_threshold
@@ -67,8 +67,6 @@ class LiveAudioTranscriber(AsyncClass):
         Args:
             model (Any): The Model class to use for inference.
             loop_forever (bool): If True, the method will continuously print transcription results.
-            execution_interval (int): The number of seconds between each inference run.
-        
         Returns:
             Tuple[List[str], List[str], List[str]]: If loop_forever == True - A tuple containing the transcription, original tokens, and processed tokens.
         """
@@ -78,14 +76,14 @@ class LiveAudioTranscriber(AsyncClass):
             indata_flattened: np.ndarray = abs(indata.flatten())
             
             # discard buffers that contain mostly silence
-            if np.percentile(indata_flattened, 10) <= self.SILENCE_THRESHOLD:
+            if (np.percentile(indata_flattened, 10) <= self.SILENCE_THRESHOLD) and self.global_ndarray is None:
                 continue
             if self.global_ndarray is not None:
                 self.global_ndarray = np.concatenate((self.global_ndarray, indata), dtype='int16')
             else:
                 self.global_ndarray = indata
-            # concatenate buffers if the end of the current buffer is not silent and if the chunksize is under 5
-            if np.percentile(indata_flattened[-100:-1], 10) > self.SILENCE_THRESHOLD:
+            # concatenate buffers if the end of the current buffer is not silent
+            if (np.percentile(indata_flattened[-100:-1], 10) > self.SILENCE_THRESHOLD):
                 continue
             else:
                 self.temp_ndarray = self.global_ndarray.copy()
