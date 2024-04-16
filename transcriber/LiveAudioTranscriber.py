@@ -1,6 +1,8 @@
 import numpy as np
 import asyncio
+import math
 import sounddevice as sd
+import noisereduce as nr
 
 from typing import Tuple, List
 from async_class import AsyncClass
@@ -88,6 +90,8 @@ class LiveAudioTranscriber(AsyncClass):
             else:
                 self.temp_ndarray = self.global_ndarray.copy()
                 self.temp_ndarray = self.temp_ndarray.flatten().astype(np.float32) / 32768.0
+                self.temp_ndarray = await asyncio.to_thread(nr.reduce_noise, y=self.temp_ndarray, sr=self.SAMPLERATE)
+
                 await model.run_inference(self.temp_ndarray, self.SAMPLERATE)
                 
                 if loop_forever:

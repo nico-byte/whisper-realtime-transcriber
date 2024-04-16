@@ -1,13 +1,13 @@
 import asyncio
 import sys
 
-from transcriber.pretrained import PretrainedWhisper
+from transcriber.distilled import DistilWhisper
 from transcriber import LiveAudioTranscriber
 
 
 async def main():        
     # Load model config
-    asr_model = await PretrainedWhisper(model_size="small", device="cuda")
+    asr_model = await DistilWhisper(model_size="large", device="cuda")
     await asr_model.load()
     
     # Load transcriber
