@@ -1,6 +1,5 @@
 import numpy as np
 import asyncio
-import math
 import sounddevice as sd
 import noisereduce as nr
 
@@ -9,23 +8,9 @@ from async_class import AsyncClass
 
 
 class LiveAudioTranscriber(AsyncClass):
-    """
-    Provides a class for providing the live audio transcription.
-    ----------------------------------------------------------------------------------
-    Paramters
-    ----------
-    samplerate: int
-        The samplerate to use for the input stream. Default: 16000
-    blocksize: int
-        The size of the blocks to use for the input stream. Default: 4000
-    ajustment_time: int
-        The duration used for generating the silence_threshold. Default: 5
-    silence_threshold: int
-        If it is not desired to auto generate a silence_threshold, set this value to a desired value. Default: set_silence_threshold()
-    """
     async def __ainit__(self, samplerate: int=None, blocksize: int=None, adjustment_time: int=None, silence_threshold: float=None):
         self.SAMPLERATE = 16000 if samplerate is None else samplerate
-        self.BLOCKSIZE = 4000 if blocksize is None else blocksize
+        self.BLOCKSIZE = 8000 if blocksize is None else blocksize
         self.ADJUSTMENT_TIME = 5 if adjustment_time is None else adjustment_time
         
         self.SILENCE_THRESHOLD = silence_threshold
@@ -40,14 +25,6 @@ class LiveAudioTranscriber(AsyncClass):
             samplerate: {self.SAMPLERATE}\n\
                 blocksize: {self.BLOCKSIZE}")
     async def generate(self):
-        """Generates an input stream of audio data asynchronously.
-    
-        This method sets up an asynchronous input stream using the `sounddevice` library, with a specified sample rate, block size, and callback function. 
-        The callback function puts the incoming audio data and status into an asynchronous queue, which is then yielded one block at a time.
-    
-        Yields:
-            Tuple[numpy.ndarray, int]: A tuple containing the audio data block and the status of the input stream.
-        """
         q_in = asyncio.Queue()
         loop = asyncio.get_event_loop()
 
@@ -61,17 +38,6 @@ class LiveAudioTranscriber(AsyncClass):
                 yield indata, status
     
     async def transcribe(self, model, loop_forever: bool) -> Tuple[List[str], List[str], List[str]]:
-        """Transcribes live audio input using the provided Inference and InputStreamGenerator classes.
-        
-        This method listens for audio input, processes it in blocks, and runs inference on the accumulated audio data. 
-        The transcription results are either printed continuously or returned as a tuple.
-        
-        Args:
-            model (Any): The Model class to use for inference.
-            loop_forever (bool): If True, the method will continuously print transcription results.
-        Returns:
-            Tuple[List[str], List[str], List[str]]: If loop_forever == True - A tuple containing the transcription, original tokens, and processed tokens.
-        """
         print("Listening...")
         
         async for indata, _ in self.generate():
@@ -103,10 +69,6 @@ class LiveAudioTranscriber(AsyncClass):
         
     @staticmethod
     async def print_transcriptions(transcript):
-        """Prints the current transcript, ensuring that the output is formatted with a maximum line length of 77 characters. 
-        
-        If the addition of the current transcript would exceed the line length, a new line is started.
-        """
         char_limit: int = 77  # The character limit after which a new line should start
         current_line_length: int = 0  # Current length of the line being printed
 
@@ -119,12 +81,6 @@ class LiveAudioTranscriber(AsyncClass):
         current_line_length += len(transcript) # Update the current line length
         
     async def set_silence_threshold(self):
-        """Automatically sets the silence threshold for the input stream based on the first few seconds of audio data.
-    
-        This method processes incoming audio data from the input stream, computes the average loudness over the first few seconds, and sets the `SILENCE_THRESHOLD` attribute based on the computed average loudness and the `SILENCE_RATIO` parameter.
-    
-        The method continues processing audio data until the `ADJUSTMENT_TIME` duration has elapsed, at which point it sets the `SILENCE_THRESHOLD` and exits.
-        """
         blocks_processed: int = 0
         loudness_values: list = []
 

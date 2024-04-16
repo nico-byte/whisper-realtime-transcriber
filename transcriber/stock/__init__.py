@@ -1,1 +1,0 @@
-from transcriber.stock.Stock import StockWhisper

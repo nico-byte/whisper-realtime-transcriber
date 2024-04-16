@@ -1,20 +1,22 @@
 import asyncio
 import sys
 
-from transcriber.distilled import DistilWhisper
+from transcriber.whisper_models.finetuned import FinetunedWhisper
+from transcriber.whisper_models.distilled import DistilWhisper
+from transcriber.whisper_models.stock import StockWhisper
 from transcriber import LiveAudioTranscriber
 
 
 async def main():        
     # Load model config
-    asr_model = await DistilWhisper(model_size="large", device="cuda")
+    asr_model = await DistilWhisper(model_size="large", language="en", device="cuda")
     await asr_model.load()
     
     # Load transcriber
     transcriber = await LiveAudioTranscriber()
     
     # Create a transcribe task
-    transcribe_task = asyncio.create_task(transcriber.transcribe(model=asr_model, loop_forever=True))
+    transcribe_task = asyncio.create_task(transcriber.transcribe(model=asr_model, loop_forever=False))
     
     # Execute the task and catch exception
     try:
