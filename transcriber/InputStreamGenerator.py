@@ -8,13 +8,13 @@ from async_class import AsyncClass
 class InputStreamGenerator(AsyncClass):
     async def __ainit__(self, samplerate: int=None, blocksize: int=None, adjustment_time: int=None, silence_threshold: float=None):
         self.SAMPLERATE = 16000 if samplerate is None else samplerate
-        self.BLOCKSIZE = 8000 if blocksize is None else blocksize
+        self.BLOCKSIZE = 4000 if blocksize is None else blocksize
         self.ADJUSTMENT_TIME = 5 if adjustment_time is None else adjustment_time
         
         self.SILENCE_THRESHOLD = silence_threshold
         
         if self.SILENCE_THRESHOLD is None:
-            await self.set_silence_threshold()
+            await self._set_silence_threshold()
         
         self.global_ndarray: np.ndarray = None
         self.temp_ndarray: np.ndarray = None
@@ -24,7 +24,7 @@ class InputStreamGenerator(AsyncClass):
         print(f"Checked inputstream parameters: \n\
             samplerate: {self.SAMPLERATE}\n\
                 blocksize: {self.BLOCKSIZE}")
-    async def generate(self):
+    async def _generate(self):
         q_in = asyncio.Queue()
         loop = asyncio.get_event_loop()
 
@@ -40,7 +40,7 @@ class InputStreamGenerator(AsyncClass):
     async def process_audio(self):
         print("Listening...")
         
-        async for indata, _ in self.generate():
+        async for indata, _ in self._generate():
             indata_flattened: np.ndarray = abs(indata.flatten())
             
             # discard buffers that contain mostly silence
@@ -51,7 +51,7 @@ class InputStreamGenerator(AsyncClass):
             else:
                 self.global_ndarray = indata
             # concatenate buffers if the end of the current buffer is not silent
-            if (np.percentile(indata_flattened[-100:-1], 10) > self.SILENCE_THRESHOLD):
+            if (np.percentile(indata_flattened[-100:-1], 10) > self.SILENCE_THRESHOLD) or self.data_ready_event.is_set():
                 continue
             else:
                 self.temp_ndarray = self.global_ndarray.copy()
@@ -60,11 +60,11 @@ class InputStreamGenerator(AsyncClass):
                 self.global_ndarray = None
                 self.data_ready_event.set()
         
-    async def set_silence_threshold(self):
+    async def _set_silence_threshold(self):
         blocks_processed: int = 0
         loudness_values: list = []
 
-        async for indata, _ in self.generate():
+        async for indata, _ in self._generate():
             blocks_processed += 1
             indata_flattened: np.ndarray = abs(indata.flatten())
 

@@ -10,12 +10,10 @@ from transformers import AutoProcessor, AutoModelForSpeechSeq2Seq
 
 
 class WhisperBase(AsyncClass):
-    async def __ainit__(self, inputstream_generator, language: str=None, device: str=None):        
+    async def __ainit__(self, inputstream_generator, device: str=None):        
         self.speech_model = None
         self.processor = None
-        
-        self.language = language if language is not None else "en"
-        
+                
         self.transcript: str = ""
         self.original_tokens: List = []
         self.processed_tokens: List = []
@@ -26,11 +24,10 @@ class WhisperBase(AsyncClass):
         
         self.inputstream_generator = inputstream_generator
         
-    async def load(self):
+    async def _load(self):
         model = AutoModelForSpeechSeq2Seq.from_pretrained(
             self.model_id, torch_dtype=self.torch_dtype, low_cpu_mem_usage=True, use_safetensors=True).to(self.device)
-        processor = AutoProcessor.from_pretrained(self.model_id, language=self.language, task="transcribe")
-        model.config.forced_decoder_ids = processor.get_decoder_prompt_ids(language=self.language, task="transcribe")
+        processor = AutoProcessor.from_pretrained(self.model_id)
         
         self.speech_model = model
         self.processor = processor
@@ -57,25 +54,30 @@ class WhisperBase(AsyncClass):
             input_features = input_features.to(self.device, dtype=self.torch_dtype)
 
 
-            generated_ids = await asyncio.to_thread(self.speech_model.generate, inputs=input_features, **gen_kwargs)
+            generated_ids = await asyncio.to_thread(self.speech_model.generate, input_features=input_features, **gen_kwargs)
             transcript = await asyncio.to_thread(self.processor.batch_decode, generated_ids, skip_special_tokens=True, decode_with_timestamps=gen_kwargs["return_timestamps"])
 
             self.transcript = transcript[0]
 
             self.original_tokens, self.processed_tokens = await asyncio.to_thread(tokenize_text, self.transcript)
             
-            await self.print_transcriptions()
+            await self._print_transcriptions()
             
             end_time = time.monotonic()
             
-            realtime_factor = (end_time - start_time) / (len(self.inputstream_generator.temp_ndarray) / self.inputstream_generator.SAMPLERATE)
+            transcription_duration = end_time - start_time
+            audio_duration = len(self.inputstream_generator.temp_ndarray) / self.inputstream_generator.SAMPLERATE
+            realtime_factor = transcription_duration / audio_duration
             
             if realtime_factor > 1:
-                raise RuntimeError("Transcription took longer than length of input in seconds, try to use a smaller model.")
+                print(f"\nTranscription took longer ({transcription_duration:.3f}s) than length of input in seconds ({audio_duration:.3f}s).")
+                print(f"Real-Time Factor: {realtime_factor:.3f}, try to use a smaller model.")
+                print("Exiting now, to avoid potential memory issues...")
+                raise asyncio.CancelledError()
             
             self.inputstream_generator.data_ready_event.clear()
         
-    async def print_transcriptions(self):
+    async def _print_transcriptions(self):
         char_limit: int = 77  # The character limit after which a new line should start
         current_line_length: int = 0  # Current length of the line being printed
 

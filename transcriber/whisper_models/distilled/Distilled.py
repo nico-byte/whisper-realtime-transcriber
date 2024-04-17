@@ -2,8 +2,8 @@ from transcriber.whisper_models.WhisperBase import WhisperBase
 
 
 class DistilWhisper(WhisperBase):
-    async def __ainit__(self, inputstream_generator, model_size: str=None, language: str=None, device: str=None):        
-        await super().__ainit__(inputstream_generator, language, device)
+    async def __ainit__(self, inputstream_generator, model_size: str=None, device: str=None):        
+        await super().__ainit__(inputstream_generator, device)
         self.available_model_sizes = ["small", "medium", "large-v3"]
         
         self.model_size = model_size if model_size in self.available_model_sizes else "small"
@@ -14,15 +14,16 @@ class DistilWhisper(WhisperBase):
             
         self.model_id = f"distil-whisper/distil-{self.model_size}.en" if self.model_size in self.available_model_sizes[:2] else f"distil-whisper/distil-{self.model_size}"
             
+        await self._load()
+        
         print(f"Checked model parameters: \n\
             model_id: {self.model_id}\n\
                 model_size: {self.model_size}\n\
                     device: {self.device}\n\
-                        torch_dtype: {self.torch_dtype}\n\
-                            language: {self.language}")
+                        torch_dtype: {self.torch_dtype}")
         
-    async def load(self):
-        await super().load()
+    async def _load(self):
+        await super()._load()
         
         print("Loaded distilled whisper model...")
         

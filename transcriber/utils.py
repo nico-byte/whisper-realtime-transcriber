@@ -8,21 +8,6 @@ from nltk.tokenize import WordPunctTokenizer
 
 
 def tokenize_text(text: str) -> Tuple[List[str], List[str]]:
-    """Tokenizes the given text and performs various transformations, including:
-    
-    - Keeping the original tokens
-    - Converting the text to lowercase
-    - Identifying and converting times to words
-    - Converting numbers to words
-    - Removing punctuation while preserving German umlauts
-    - Stripping whitespace
-
-    Args:
-        text (str): The text to be preprocessed.
-
-    Returns:
-        Tuple[List[str], List[str]]: The original and processed tokens.
-    """
     # Keep original tokens
     original_tokens =  WordPunctTokenizer().tokenize(text)
     
@@ -52,11 +37,6 @@ def tokenize_text(text: str) -> Tuple[List[str], List[str]]:
 
 
 def set_device(device) -> torch.device:
-    """Determines the appropriate device to use for PyTorch operations, prioritizing GPU and MPS (Apple Silicon) devices if available, and falling back to CPU if neither is available.
-
-    Returns:
-        torch.device: The device to use for PyTorch operations.
-    """
     if device in ["cpu", "cuda", "mps"]:
         try:
             device = torch.device(device)

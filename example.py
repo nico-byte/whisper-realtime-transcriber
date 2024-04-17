@@ -11,19 +11,23 @@ async def main():
     # Load inputstream_generator
     inputstream_generator = await InputStreamGenerator()
     
-    # Load model config
-    asr_model = await DistilWhisper(inputstream_generator=inputstream_generator, model_size="large", language="en", device="cuda")
-    await asr_model.load()
+    # Load model
+    # when using the FinetunedWhisper class one can specify a different whisper model from huggingface
+    # like this:
+    # model_id = "bofenghuang/whisper-large-cv11-german",
+    # asr_model = await FinetunedWhisper(inputstream_generator=inputstream_generator, model_id=model_id)
+    # model_size becomes obsolete then
+    asr_model = await DistilWhisper(inputstream_generator=inputstream_generator, model_size="large", device="cuda")
     
-    # Create a transcribe task
+    # Create a transcribe and inputstream task
     inputstream_task = asyncio.create_task(inputstream_generator.process_audio())
     transcribe_task = asyncio.create_task(asr_model.run_inference())
     
-    # Execute the task and catch exception
+    # Execute the tasks and catch exception
     try:
         await asyncio.gather(inputstream_task, transcribe_task)
     except asyncio.CancelledError:
-        print("Transcribe task cancelled.")
+        print("\nTranscribe task cancelled.")
 
 
 if __name__ == '__main__':
