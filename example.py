@@ -17,7 +17,7 @@ async def main():
     # model_id = "bofenghuang/whisper-large-cv11-german",
     # asr_model = await FinetunedWhisper(inputstream_generator=inputstream_generator, model_id=model_id)
     # model_size becomes obsolete then
-    asr_model = await DistilWhisper(inputstream_generator=inputstream_generator, model_size="large", device="cuda")
+    asr_model = await FinetunedWhisper(inputstream_generator=inputstream_generator, model_size="large", device="cuda")
     
     # Create a transcribe and inputstream task
     inputstream_task = asyncio.create_task(inputstream_generator.process_audio())

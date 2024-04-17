@@ -7,23 +7,16 @@ from num2words import num2words
 from nltk.tokenize import WordPunctTokenizer
 
 
-def tokenize_text(text: str) -> Tuple[List[str], List[str]]:
+def tokenize_text(text: str, language: str='en') -> Tuple[List[str], List[str]]:
     # Keep original tokens
     original_tokens =  WordPunctTokenizer().tokenize(text)
     
     # Convert text to lower case
     text = text.lower()
-    # Identify and convert times
-    time_pattern = r"\b\d{1,2}:\d{2}\b"
-    times = re.findall(time_pattern, text)
-    for time in times:
-        hours, minutes = map(int, time.split(":"))
-        time_in_words = f"{num2words(hours, lang='de')} Uhr {num2words(minutes, lang='de')}"
-        text = text.replace(time, time_in_words)
 
     # Convert numbers to words
     # ordinal numbers will be converted to usual numbers - 2nd will be two
-    text = ' '.join(num2words(int(word), lang='de', ordinal=False) if word.isdigit() else word for word in text.split())
+    text = ' '.join(num2words(int(word), lang=language, ordinal=False) if word.isdigit() else word for word in text.split())
     
     # Keep German umlauts
     remove_punct_map = {ord(char): None for char in string.punctuation if char not in ['ä', 'ö', 'ü', 'ß']}

@@ -2,10 +2,12 @@ import numpy as np
 import asyncio
 import sounddevice as sd
 
+from utils.decorators import async_timer
 from async_class import AsyncClass
 
 
 class InputStreamGenerator(AsyncClass):
+    @async_timer(print_value=True, statement="Loaded inputstream generator")
     async def __ainit__(self, samplerate: int=None, blocksize: int=None, adjustment_time: int=None, silence_threshold: float=None):
         self.SAMPLERATE = 16000 if samplerate is None else samplerate
         self.BLOCKSIZE = 4000 if blocksize is None else blocksize
@@ -24,6 +26,7 @@ class InputStreamGenerator(AsyncClass):
         print(f"Checked inputstream parameters: \n\
             samplerate: {self.SAMPLERATE}\n\
                 blocksize: {self.BLOCKSIZE}")
+    
     async def _generate(self):
         q_in = asyncio.Queue()
         loop = asyncio.get_event_loop()

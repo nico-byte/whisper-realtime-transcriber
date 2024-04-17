@@ -1,22 +1,29 @@
 import torch
-import torchaudio
 import asyncio
-import time
 
 from typing import List
-from transcriber.utils import tokenize_text, set_device
+from utils.utils import tokenize_text, set_device
+from utils.decorators import async_timer
 from async_class import AsyncClass
 from transformers import AutoProcessor, AutoModelForSpeechSeq2Seq
 
 
 class WhisperBase(AsyncClass):
-    async def __ainit__(self, inputstream_generator, device: str=None):        
+    async def __ainit__(self, inputstream_generator, language: str=None, device: str=None):        
         self.speech_model = None
         self.processor = None
+        
+        self.language = "en" if language is None else language
                 
         self.transcript: str = ""
         self.original_tokens: List = []
         self.processed_tokens: List = []
+        
+        self.gen_kwargs = {
+            "max_new_tokens": 128,
+            "num_beams": 1,
+            "return_timestamps": False,
+            }
                     
         self.device = await asyncio.to_thread(set_device, device)
         
@@ -33,39 +40,11 @@ class WhisperBase(AsyncClass):
         self.processor = processor
                 
     async def run_inference(self):
-        gen_kwargs = {
-              "max_new_tokens": 128,
-              "num_beams": 1,
-              "return_timestamps": False,
-            }
-        
         while True:
             await self.inputstream_generator.data_ready_event.wait()
-            start_time = time.monotonic()
-            waveform = torch.from_numpy(self.inputstream_generator.temp_ndarray)
-            model_sample_rate = self.processor.feature_extractor.sampling_rate
-
-            if self.inputstream_generator.SAMPLERATE != model_sample_rate:
-                resampler = torchaudio.transforms.Resample(self.inputstream_generator.SAMPLERATE, model_sample_rate)
-                waveform = resampler(waveform)
-
-            input_features = self.processor(waveform, sampling_rate=self.inputstream_generator.SAMPLERATE, return_tensors="pt").input_features
-
-            input_features = input_features.to(self.device, dtype=self.torch_dtype)
-
-
-            generated_ids = await asyncio.to_thread(self.speech_model.generate, input_features=input_features, **gen_kwargs)
-            transcript = await asyncio.to_thread(self.processor.batch_decode, generated_ids, skip_special_tokens=True, decode_with_timestamps=gen_kwargs["return_timestamps"])
-
-            self.transcript = transcript[0]
-
-            self.original_tokens, self.processed_tokens = await asyncio.to_thread(tokenize_text, self.transcript)
             
-            await self._print_transcriptions()
-            
-            end_time = time.monotonic()
-            
-            transcription_duration = end_time - start_time
+            transcription_duration = await self._transcribe()
+                        
             audio_duration = len(self.inputstream_generator.temp_ndarray) / self.inputstream_generator.SAMPLERATE
             realtime_factor = transcription_duration / audio_duration
             
@@ -75,7 +54,20 @@ class WhisperBase(AsyncClass):
                 print("Exiting now, to avoid potential memory issues...")
                 raise asyncio.CancelledError()
             
+            await self._print_transcriptions()
+            
             self.inputstream_generator.data_ready_event.clear()
+            
+    @async_timer
+    async def _transcribe(self):
+        waveform = torch.from_numpy(self.inputstream_generator.temp_ndarray)
+
+        input_features = self.processor(waveform, sampling_rate=self.inputstream_generator.SAMPLERATE, return_tensors="pt").input_features
+        input_features = input_features.to(self.device, dtype=self.torch_dtype)
+        generated_ids = await asyncio.to_thread(self.speech_model.generate, input_features=input_features, **self.gen_kwargs)
+        transcript = await asyncio.to_thread(self.processor.batch_decode, generated_ids, skip_special_tokens=True, decode_with_timestamps=self.gen_kwargs["return_timestamps"])
+        self.transcript = transcript[0]
+        self.original_tokens, self.processed_tokens = await asyncio.to_thread(tokenize_text, self.transcript, self.language)
         
     async def _print_transcriptions(self):
         char_limit: int = 77  # The character limit after which a new line should start
