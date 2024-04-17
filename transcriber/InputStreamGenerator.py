@@ -1,13 +1,11 @@
 import numpy as np
 import asyncio
 import sounddevice as sd
-import noisereduce as nr
 
-from typing import Tuple, List
 from async_class import AsyncClass
 
 
-class LiveAudioTranscriber(AsyncClass):
+class InputStreamGenerator(AsyncClass):
     async def __ainit__(self, samplerate: int=None, blocksize: int=None, adjustment_time: int=None, silence_threshold: float=None):
         self.SAMPLERATE = 16000 if samplerate is None else samplerate
         self.BLOCKSIZE = 8000 if blocksize is None else blocksize
@@ -20,6 +18,8 @@ class LiveAudioTranscriber(AsyncClass):
         
         self.global_ndarray: np.ndarray = None
         self.temp_ndarray: np.ndarray = None
+        
+        self.data_ready_event = asyncio.Event()
                 
         print(f"Checked inputstream parameters: \n\
             samplerate: {self.SAMPLERATE}\n\
@@ -37,7 +37,7 @@ class LiveAudioTranscriber(AsyncClass):
                 indata, status = await q_in.get()
                 yield indata, status
     
-    async def transcribe(self, model, loop_forever: bool) -> Tuple[List[str], List[str], List[str]]:
+    async def process_audio(self):
         print("Listening...")
         
         async for indata, _ in self.generate():
@@ -56,29 +56,9 @@ class LiveAudioTranscriber(AsyncClass):
             else:
                 self.temp_ndarray = self.global_ndarray.copy()
                 self.temp_ndarray = self.temp_ndarray.flatten().astype(np.float32) / 32768.0
-                self.temp_ndarray = await asyncio.to_thread(nr.reduce_noise, y=self.temp_ndarray, sr=self.SAMPLERATE)
-
-                await model.run_inference(self.temp_ndarray, self.SAMPLERATE)
                 
-                if loop_forever:
-                    await self.print_transcriptions(model.transcript)
-                    self.global_ndarray: np.ndarray = None
-                    self.temp_ndarray: np.ndarray = None
-                else:
-                    return model.transcript, model.original_tokens, model.processed_tokens
-        
-    @staticmethod
-    async def print_transcriptions(transcript):
-        char_limit: int = 77  # The character limit after which a new line should start
-        current_line_length: int = 0  # Current length of the line being printed
-
-        # Calculate the new line length if the update is added
-        new_line_length: int = current_line_length + len(transcript)
-        if new_line_length > char_limit:
-            print()  # Start a new line if the limit is exceeded
-            current_line_length = 0  # Reset the current line length
-        print(transcript + " ", end='', flush=True)  # Print the update without a newline, flush to ensure it's displayed
-        current_line_length += len(transcript) # Update the current line length
+                self.global_ndarray = None
+                self.data_ready_event.set()
         
     async def set_silence_threshold(self):
         blocks_processed: int = 0

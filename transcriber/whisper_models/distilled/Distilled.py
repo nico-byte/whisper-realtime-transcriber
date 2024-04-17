@@ -1,11 +1,9 @@
-import numpy as np
-
 from transcriber.whisper_models.WhisperBase import WhisperBase
 
 
 class DistilWhisper(WhisperBase):
-    async def __ainit__(self, model_size: str=None, language: str=None, device: str=None):        
-        await super().__ainit__(language, device)
+    async def __ainit__(self, inputstream_generator, model_size: str=None, language: str=None, device: str=None):        
+        await super().__ainit__(inputstream_generator, language, device)
         self.available_model_sizes = ["small", "medium", "large-v3"]
         
         self.model_size = model_size if model_size in self.available_model_sizes else "small"
@@ -28,8 +26,8 @@ class DistilWhisper(WhisperBase):
         
         print("Loaded distilled whisper model...")
         
-    async def run_inference(self, audio_data: np.array, sample_rate: int):
-        await super().run_inference(audio_data, sample_rate)
+    async def run_inference(self):
+        await super().run_inference()
         
     async def get_models(self):
         await super().get_models()
