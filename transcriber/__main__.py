@@ -1,31 +1,55 @@
 import asyncio
 import sys
 import argparse
+import yaml
 
+from typing import Dict
 from transcriber.whisper_models.finetuned import FinetunedWhisper
 from transcriber.whisper_models.distilled import DistilWhisper
 from transcriber.whisper_models.stock import StockWhisper
 from transcriber.InputStreamGenerator import InputStreamGenerator
 
+def check_config(args):
+    defaults = {
+        'model_params': {
+            'backend': 'stock',
+            'model_id': None,
+            'model_size': 'small',
+            'device': 'cpu',
+            'language': 'en'
+        },
+        'generator_params': {
+            'samplerate': 16000,
+            'blocksize': 4000,
+            'adjustment_time': 5
+        }
+    }
+    
+    try:
+        with open(args.transcriber_conf) as f:
+            config = yaml.load(f, Loader=yaml.FullLoader)
 
-def add_args(parser):
-    parser.add_argument('--backend', type=str, default="distilled", choices=["distilled", "finetuned", "stock"],help='Backend to be used for Whisper processing (default: distilled).')
-    parser.add_argument('--model_id', type=str, default=None, help='If using fientuned backend, this is an alternative model_id to be used.')
-    parser.add_argument('--model_size', type=str, default='small', choices=["small", "medium", "large"],help="Size of the Whisper model to be used (default: large).")
-    parser.add_argument('--device', type=str, default="cuda", choices=["cuda", "mps", "cpu"],help='Device to be used for Whisper processing (default: cuda).')
+        if not isinstance(config, Dict):
+            return defaults
 
-def main(args):
+    except FileNotFoundError:
+        print(f"Could not find config file in {args.transcriber_conf}.")
+        return defaults
+    
+    return config
+
+def main(transcriber_conf):
     # Load inputstream_generator
-    inputstream_generator = InputStreamGenerator()
+    inputstream_generator = InputStreamGenerator(**transcriber_conf['generator_params'])
     
     # Load model
-    backend = args.backend
+    backend = transcriber_conf['model_params']['backend']
     if backend == "finetuned":
-        asr_model = FinetunedWhisper(inputstream_generator=inputstream_generator, model_id=args.model_id, model_size=args.model_size, device=args.device)
-    elif backend == "stock_whisper":
-        asr_model = StockWhisper(inputstream_generator=inputstream_generator, model_size=args.model_size, device=args.device)
+        asr_model = FinetunedWhisper(inputstream_generator=inputstream_generator, **transcriber_conf['model_params'])
+    elif backend == "stock":
+        asr_model = StockWhisper(inputstream_generator=inputstream_generator, **transcriber_conf['model_params'])
     else:
-        asr_model = DistilWhisper(inputstream_generator=inputstream_generator, model_size=args.model_size, device=args.device)
+        asr_model = DistilWhisper(inputstream_generator=inputstream_generator, **transcriber_conf['model_params'])
     
     asyncio.run(start(inputstream_generator, asr_model))
         
@@ -43,10 +67,11 @@ async def start(inputstream_generator, asr_model):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    add_args(parser)
+    parser.add_argument('--transcriber_conf', type=str, default="./transcriber_config.yaml", help='Config file for the transcriber (default: ./transcriber_config.yaml).')
     args = parser.parse_args()
+    transcriber_conf = check_config(args)
     try:
         print("Activating wire...")
-        main(args)
+        main(transcriber_conf)
     except KeyboardInterrupt:
         sys.exit('\nInterrupted by user')

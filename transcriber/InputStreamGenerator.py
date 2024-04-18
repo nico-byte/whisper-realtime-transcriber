@@ -2,18 +2,16 @@ import numpy as np
 import asyncio
 import sounddevice as sd
 
-from utils.decorators import init_timer
+from utils.decorators import sync_timer
 
 
 class InputStreamGenerator():
-    @init_timer(print_statement="Loaded inputstream generator")
-    def __init__(self, samplerate: int=None, blocksize: int=None, adjustment_time: int=None, silence_threshold: float=None):
-        self.SAMPLERATE = 16000 if samplerate is None else samplerate
-        self.BLOCKSIZE = 4000 if blocksize is None else blocksize
-        self.ADJUSTMENT_TIME = 5 if adjustment_time is None else adjustment_time
-        
-        self.SILENCE_THRESHOLD = silence_threshold
-        
+    @sync_timer(print_statement="Loaded inputstream generator", return_some=False)
+    def __init__(self, **kwargs):
+        self.SAMPLERATE = 16000 if kwargs['samplerate'] is None else kwargs['samplerate']
+        self.BLOCKSIZE = 4000 if kwargs['blocksize'] is None else kwargs['blocksize']
+        self.ADJUSTMENT_TIME = 5 if kwargs['adjustment_time'] is None else kwargs['adjustment_time']
+                
         self.global_ndarray: np.ndarray = None
         self.temp_ndarray: np.ndarray = None
         
@@ -37,8 +35,7 @@ class InputStreamGenerator():
                 yield indata, status
     
     async def process_audio(self):
-        if self.SILENCE_THRESHOLD is None:
-            await self._set_silence_threshold()
+        await self._set_silence_threshold()
         
         print("Listening...")
         

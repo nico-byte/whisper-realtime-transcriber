@@ -2,19 +2,20 @@ import torch
 import asyncio
 
 from typing import List
+import matplotlib.pyplot as plt
 from utils.utils import tokenize_text, set_device
 from utils.decorators import async_timer
 from transformers import AutoProcessor, AutoModelForSpeechSeq2Seq
 
 
 class WhisperBase():
-    def __init__(self, inputstream_generator, language: str=None, device: str=None):        
+    def __init__(self, inputstream_generator, **kwargs):        
         self.speech_model = None
         self.processor = None
         
         self.inputstream_generator = inputstream_generator
         
-        self.language = "en" if language is None else language
+        self.language = kwargs['language']
                 
         self.transcript: str = ""
         self.original_tokens: List = []
@@ -26,15 +27,18 @@ class WhisperBase():
             "return_timestamps": False,
             }
                     
-        self.device = set_device(device)
-        
+        self.device = set_device(kwargs['device'])
+                
         self.torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
         
         self.inputstream_generator = inputstream_generator
         
     def _load(self):
         model = AutoModelForSpeechSeq2Seq.from_pretrained(
-            self.model_id, torch_dtype=self.torch_dtype, low_cpu_mem_usage=True, use_safetensors=True).to(self.device)
+            self.model_id, 
+            torch_dtype=self.torch_dtype, 
+            low_cpu_mem_usage=True, 
+            use_safetensors=True).to(self.device)
         processor = AutoProcessor.from_pretrained(self.model_id)
         
         self.speech_model = model
@@ -62,11 +66,13 @@ class WhisperBase():
     @async_timer
     async def _transcribe(self):
         waveform = torch.from_numpy(self.inputstream_generator.temp_ndarray)
-
+        
         input_features = self.processor(waveform, sampling_rate=self.inputstream_generator.SAMPLERATE, return_tensors="pt").input_features
         input_features = input_features.to(self.device, dtype=self.torch_dtype)
+        
         generated_ids = await asyncio.to_thread(self.speech_model.generate, input_features=input_features, **self.gen_kwargs)
         transcript = await asyncio.to_thread(self.processor.batch_decode, generated_ids, skip_special_tokens=True, decode_with_timestamps=self.gen_kwargs["return_timestamps"])
+        
         self.transcript = transcript[0]
         self.original_tokens, _ = await asyncio.to_thread(tokenize_text, self.transcript, self.language)
         

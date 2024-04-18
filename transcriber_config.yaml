@@ -1,0 +1,10 @@
+model_params:
+  backend: 'distilled'
+  model_id: ''
+  model_size: 'small'
+  device: 'cuda'
+  language: 'en'
+generator_params:
+  samplerate: 16000
+  blocksize: 4000
+  adjustment_time: 5
