@@ -5,14 +5,14 @@ from transcriber.whisper_models.WhisperBase import WhisperBase
 
 
 class StockWhisper(WhisperBase):
-    @async_timer(print_value=True, statement="Loaded stock whisper model")
+    @async_timer(print_statement="Loaded stock whisper model")
     async def __ainit__(self, inputstream_generator, model_size: str=None, language: str=None, device: str=None):        
         await super().__ainit__(inputstream_generator, language, device)
         self.available_model_sizes = ["small", "medium", "large-v3"]
                 
         self.model_size = model_size if model_size in self.available_model_sizes else "small"
         self.model_size = "large-v3" if model_size == "large" else self.model_size
-            
+                
         self.model_id = f"openai/whisper-{self.model_size}"
             
         await self._load()

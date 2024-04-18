@@ -7,7 +7,7 @@ from async_class import AsyncClass
 
 
 class InputStreamGenerator(AsyncClass):
-    @async_timer(print_value=True, statement="Loaded inputstream generator")
+    @async_timer(print_statement="Loaded inputstream generator")
     async def __ainit__(self, samplerate: int=None, blocksize: int=None, adjustment_time: int=None, silence_threshold: float=None):
         self.SAMPLERATE = 16000 if samplerate is None else samplerate
         self.BLOCKSIZE = 4000 if blocksize is None else blocksize

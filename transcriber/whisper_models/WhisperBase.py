@@ -13,6 +13,8 @@ class WhisperBase(AsyncClass):
         self.speech_model = None
         self.processor = None
         
+        self.inputstream_generator = inputstream_generator
+        
         self.language = "en" if language is None else language
                 
         self.transcript: str = ""
@@ -67,7 +69,7 @@ class WhisperBase(AsyncClass):
         generated_ids = await asyncio.to_thread(self.speech_model.generate, input_features=input_features, **self.gen_kwargs)
         transcript = await asyncio.to_thread(self.processor.batch_decode, generated_ids, skip_special_tokens=True, decode_with_timestamps=self.gen_kwargs["return_timestamps"])
         self.transcript = transcript[0]
-        self.original_tokens, self.processed_tokens = await asyncio.to_thread(tokenize_text, self.transcript, self.language)
+        self.original_tokens, _ = await asyncio.to_thread(tokenize_text, self.transcript, self.language)
         
     async def _print_transcriptions(self):
         char_limit: int = 77  # The character limit after which a new line should start
