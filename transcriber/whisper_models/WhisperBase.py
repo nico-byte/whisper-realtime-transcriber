@@ -4,12 +4,11 @@ import asyncio
 from typing import List
 from utils.utils import tokenize_text, set_device
 from utils.decorators import async_timer
-from async_class import AsyncClass
 from transformers import AutoProcessor, AutoModelForSpeechSeq2Seq
 
 
-class WhisperBase(AsyncClass):
-    async def __ainit__(self, inputstream_generator, language: str=None, device: str=None):        
+class WhisperBase():
+    def __init__(self, inputstream_generator, language: str=None, device: str=None):        
         self.speech_model = None
         self.processor = None
         
@@ -27,13 +26,13 @@ class WhisperBase(AsyncClass):
             "return_timestamps": False,
             }
                     
-        self.device = await asyncio.to_thread(set_device, device)
+        self.device = set_device(device)
         
         self.torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
         
         self.inputstream_generator = inputstream_generator
         
-    async def _load(self):
+    def _load(self):
         model = AutoModelForSpeechSeq2Seq.from_pretrained(
             self.model_id, torch_dtype=self.torch_dtype, low_cpu_mem_usage=True, use_safetensors=True).to(self.device)
         processor = AutoProcessor.from_pretrained(self.model_id)
@@ -83,5 +82,5 @@ class WhisperBase(AsyncClass):
         print(self.transcript + " ", end='', flush=True)  # Print the update without a newline, flush to ensure it's displayed
         current_line_length += len(self.transcript) # Update the current line length
     
-    async def get_models(self):
-        print(f"Available models: {self.available_models}")
+    def get_models(self):
+        print(f"Available models: {self.available_model_sizes}")

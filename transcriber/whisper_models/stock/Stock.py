@@ -1,13 +1,11 @@
-import numpy as np
-
-from utils.decorators import async_timer
+from utils.decorators import init_timer
 from transcriber.whisper_models.WhisperBase import WhisperBase
 
 
 class StockWhisper(WhisperBase):
-    @async_timer(print_statement="Loaded stock whisper model")
-    async def __ainit__(self, inputstream_generator, model_size: str=None, language: str=None, device: str=None):        
-        await super().__ainit__(inputstream_generator, language, device)
+    @init_timer(print_statement="Loaded stock whisper model")
+    def __init__(self, inputstream_generator, model_size: str=None, language: str=None, device: str=None):        
+        super().__init__(inputstream_generator, language, device)
         self.available_model_sizes = ["small", "medium", "large-v3"]
                 
         self.model_size = model_size if model_size in self.available_model_sizes else "small"
@@ -15,16 +13,10 @@ class StockWhisper(WhisperBase):
                 
         self.model_id = f"openai/whisper-{self.model_size}"
             
-        await self._load()
+        self._load()
         
         if self.inputstream_generator.SAMPLERATE != self.processor.feature_extractor.sampling_rate:
             self.inputstream_generator.SAMPLERATE = self.processor.feature_extractor.sampling_rate
-            
-        self.inputstream_generator.temp_ndarray = np.zeros(shape=(4000, ), dtype=np.float32)
-        
-        await self._transcribe()
-        
-        self.inputstream_generator.temp_ndarray = None
         
         if model_size not in self.available_model_sizes:
             print(f"Model size not supported. Defaulting to {self.model_size}.")
@@ -35,11 +27,11 @@ class StockWhisper(WhisperBase):
                     device: {self.device}\n\
                         torch_dtype: {self.torch_dtype}")
         
-    async def _load(self):
-        await super()._load()
+    def _load(self):
+        super()._load()
                 
     async def run_inference(self):
         await super().run_inference()
         
-    async def get_models(self):
-        await super().get_models()
+    def get_models(self):
+        super().get_models()
