@@ -4,7 +4,6 @@ ffmpeg-python
 --find-links https://download.pytorch.org/whl/cu118/torch_stable.html
 torch==2.1.1+cu118
 transformers
-async_class
 asyncio
 nltk
 num2words
