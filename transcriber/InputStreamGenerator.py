@@ -4,7 +4,7 @@ try:
     import sounddevice as sd
 except OSError as e:
     print(e)
-    print("If `GLIBCXX_x.x.x' not found, try installing it with conda install -c conda-forge libstdcxx-ng=12")
+    print("If `GLIBCXX_x.x.x' not found, try installing it with: conda install -c conda-forge libstdcxx-ng=12")
 
 from utils.decorators import sync_timer
 
@@ -12,6 +12,11 @@ from utils.decorators import sync_timer
 class InputStreamGenerator():
     @sync_timer(print_statement="Loaded inputstream generator", return_some=False)
     def __init__(self, **kwargs):
+        """
+        :param samplerate (int): the samplerate to use for the audio input
+        :param blocksize (int): the blocksize to use for the audio input
+        :param adjustment_time (int): the time to wait for adjusting the silence_threshold
+        """
         self.SAMPLERATE = 16000 if kwargs['samplerate'] is None else kwargs['samplerate']
         self.BLOCKSIZE = 4000 if kwargs['blocksize'] is None else kwargs['blocksize']
         self.ADJUSTMENT_TIME = 5 if kwargs['adjustment_time'] is None else kwargs['adjustment_time']
@@ -26,6 +31,9 @@ class InputStreamGenerator():
                 blocksize: {self.BLOCKSIZE}")
     
     async def _generate(self):
+        """
+        Generate audio chunks of size of the blocksize and yield them.
+        """
         q_in = asyncio.Queue()
         loop = asyncio.get_event_loop()
 
@@ -39,6 +47,9 @@ class InputStreamGenerator():
                 yield indata, status
     
     async def process_audio(self):
+        """
+        Process the audio chunks and store them for the transcriber.
+        """
         await self._set_silence_threshold()
         
         print("Listening...")
@@ -64,6 +75,9 @@ class InputStreamGenerator():
                 self.data_ready_event.set()
         
     async def _set_silence_threshold(self):
+        """
+        Automatically adjust the silence threshold based on the 2th percentile of the loudness of the input.
+        """
         blocks_processed: int = 0
         loudness_values: list = []
 

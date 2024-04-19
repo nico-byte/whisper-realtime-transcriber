@@ -4,21 +4,36 @@ import sys
 from transcriber.whisper_models.finetuned import FinetunedWhisper
 from transcriber.whisper_models.distilled import DistilWhisper
 from transcriber.whisper_models.stock import StockWhisper
-from transcriber import InputStreamGenerator
+from transcriber.InputStreamGenerator import InputStreamGenerator
 
 
-async def main():        
+def main():
+    transcriber_conf = {
+        'model_params': {
+            'model_id': None,
+            'model_size': 'small',
+            'device': 'cpu',
+            'language': 'en'
+        },
+        'generator_params': {
+            'samplerate': 16000,
+            'blocksize': 4000,
+            'adjustment_time': 5
+        }
+    }
+    
     # Load inputstream_generator
-    inputstream_generator = await InputStreamGenerator()
+    inputstream_generator = InputStreamGenerator(**transcriber_conf['generator_params'])
     
     # Load model
     # when using the FinetunedWhisper class one can specify a different whisper model from huggingface
-    # like this:
-    # model_id = "bofenghuang/whisper-large-cv11-german",
-    # asr_model = await FinetunedWhisper(inputstream_generator=inputstream_generator, model_id=model_id)
+    # in the transcriber_conf
     # model_size becomes obsolete then
-    asr_model = await FinetunedWhisper(inputstream_generator=inputstream_generator, model_size="large", device="cuda")
+    asr_model = DistilWhisper(inputstream_generator=inputstream_generator, **transcriber_conf['model_params'])
     
+    asyncio.run(start(inputstream_generator, asr_model))
+        
+async def start(inputstream_generator, asr_model):
     # Create a transcribe and inputstream task
     inputstream_task = asyncio.create_task(inputstream_generator.process_audio())
     transcribe_task = asyncio.create_task(asr_model.run_inference())
@@ -33,6 +48,6 @@ async def main():
 if __name__ == '__main__':
     try:
         print("Activating wire...")
-        asyncio.run(main())
+        main()
     except KeyboardInterrupt:
         sys.exit('\nInterrupted by user')

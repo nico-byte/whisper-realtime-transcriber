@@ -10,6 +10,7 @@ from transcriber.whisper_models.stock import StockWhisper
 from transcriber.InputStreamGenerator import InputStreamGenerator
 
 def check_config(args):
+    # Set default values in case config file is borken/nonexistent
     defaults = {
         'model_params': {
             'backend': 'stock',
@@ -42,7 +43,7 @@ def main(transcriber_conf):
     # Load inputstream_generator
     inputstream_generator = InputStreamGenerator(**transcriber_conf['generator_params'])
     
-    # Load model
+    # Load model based on desired backend
     backend = transcriber_conf['model_params']['backend']
     if backend == "finetuned":
         asr_model = FinetunedWhisper(inputstream_generator=inputstream_generator, **transcriber_conf['model_params'])
@@ -66,10 +67,13 @@ async def start(inputstream_generator, asr_model):
 
 
 if __name__ == '__main__':
+    # Add parser and arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('--transcriber_conf', type=str, default="./transcriber_config.yaml", help='Config file for the transcriber (default: ./transcriber_config.yaml).')
+    
     args = parser.parse_args()
     transcriber_conf = check_config(args)
+    
     try:
         print("Activating wire...")
         main(transcriber_conf)

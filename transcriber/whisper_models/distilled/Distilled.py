@@ -5,6 +5,12 @@ from transcriber.whisper_models.WhisperBase import WhisperBase
 class DistilWhisper(WhisperBase):
     @sync_timer(print_statement="Loaded distilled whisper model", return_some=False)
     def __init__(self, inputstream_generator, **kwargs):        
+        """
+        :param inputstream_generator: the generator to use for streaming audio
+        :param model_size (str): the size of the model to use for inference
+        :param language (str): the language to use for tokenizing the model output
+        :param device (str): the device to use for inference
+        """
         super().__init__(inputstream_generator, **kwargs)
         self.available_model_sizes = ["small", "medium", "large-v3"]
         
@@ -15,6 +21,7 @@ class DistilWhisper(WhisperBase):
             
         self._load()
         
+        # Check if generator samplerate matches models samplerate
         if self.inputstream_generator.SAMPLERATE != self.processor.feature_extractor.sampling_rate:
             self.inputstream_generator.SAMPLERATE = self.processor.feature_extractor.sampling_rate
         

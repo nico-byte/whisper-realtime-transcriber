@@ -9,6 +9,11 @@ from transformers import AutoProcessor, AutoModelForSpeechSeq2Seq
 
 class WhisperBase():
     def __init__(self, inputstream_generator, **kwargs):        
+        """
+        :param inputstream_generator: the generator to use for streaming audio
+        :param language (str): the language to use for tokenizing the model output
+        :param device (str): the device to use for inference
+        """
         self.speech_model = None
         self.processor = None
         
@@ -20,6 +25,7 @@ class WhisperBase():
         self.original_tokens: List = []
         self.processed_tokens: List = []
         
+        # additional paramters for model inference
         self.gen_kwargs = {
             "max_new_tokens": 128,
             "num_beams": 1,
@@ -33,6 +39,9 @@ class WhisperBase():
         self.inputstream_generator = inputstream_generator
         
     def _load(self):
+        """
+        Load model and processor for inference.
+        """
         model = AutoModelForSpeechSeq2Seq.from_pretrained(
             self.model_id, 
             torch_dtype=self.torch_dtype, 
@@ -44,14 +53,19 @@ class WhisperBase():
         self.processor = processor
                 
     async def run_inference(self):
+        """
+        Main logic for calling an inference run, computing the real-time factor and printing the transcription.
+        """
         while True:
             await self.inputstream_generator.data_ready_event.wait()
             
             transcription_duration = await self._transcribe()
                         
+            # Compute the duration of the audio input and comparing it to the duration of inference.
             audio_duration = len(self.inputstream_generator.temp_ndarray) / self.inputstream_generator.SAMPLERATE
             realtime_factor = transcription_duration / audio_duration
             
+            # Exit the program when real-time factor>1
             if realtime_factor > 1:
                 print(f"\nTranscription took longer ({transcription_duration:.3f}s) than length of input in seconds ({audio_duration:.3f}s).")
                 print(f"Real-Time Factor: {realtime_factor:.3f}, try to use a smaller model.")
@@ -64,11 +78,16 @@ class WhisperBase():
             
     @async_timer
     async def _transcribe(self):
+        """
+        Main logic for running the actual inference on the models.
+        """
+        # Convert raw audio data to feasible input for the model.
         waveform = torch.from_numpy(self.inputstream_generator.temp_ndarray)
         
         input_features = self.processor(waveform, sampling_rate=self.inputstream_generator.SAMPLERATE, return_tensors="pt").input_features
         input_features = input_features.to(self.device, dtype=self.torch_dtype)
         
+        # Make prediction on the audio data.
         generated_ids = await asyncio.to_thread(self.speech_model.generate, input_features=input_features, **self.gen_kwargs)
         transcript = await asyncio.to_thread(self.processor.batch_decode, generated_ids, skip_special_tokens=True, decode_with_timestamps=self.gen_kwargs["return_timestamps"])
         
@@ -76,6 +95,9 @@ class WhisperBase():
         self.original_tokens, _ = await asyncio.to_thread(tokenize_text, self.transcript, self.language)
         
     async def _print_transcriptions(self):
+        """
+        Prints the model trasncription.
+        """
         char_limit: int = 77  # The character limit after which a new line should start
         current_line_length: int = 0  # Current length of the line being printed
 
