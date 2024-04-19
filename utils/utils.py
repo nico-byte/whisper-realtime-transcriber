@@ -40,18 +40,3 @@ def set_device(device) -> torch.device:
         device = torch.device("cpu")
         
     return device
-
-
-def convolve_audio(data: np.ndarray, samplerate: int) -> np.ndarray:
-    # create a Hanning kernel 1/50th of a second wide
-    kernel_width_seconds = 1.0/50
-    kernel_size_points = int(kernel_width_seconds * samplerate)
-    kernel = np.hanning(kernel_size_points)
-
-    # normalize the kernel
-    kernel = kernel / kernel.sum()
-
-    # Create a filtered signal by convolving the kernel with the original data
-    filtered = np.convolve(kernel, data, mode='valid')
-    
-    return filtered

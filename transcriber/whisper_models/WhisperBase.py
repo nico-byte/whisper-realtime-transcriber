@@ -92,7 +92,7 @@ class WhisperBase():
         transcript = await asyncio.to_thread(self.processor.batch_decode, generated_ids, skip_special_tokens=True, decode_with_timestamps=self.gen_kwargs["return_timestamps"])
         
         self.transcript = transcript[0]
-        self.original_tokens, _ = await asyncio.to_thread(tokenize_text, self.transcript, self.language)
+        self.original_tokens, self.processed_tokens = await asyncio.to_thread(tokenize_text, self.transcript, self.language)
         
     async def _print_transcriptions(self):
         """
