@@ -1,10 +1,10 @@
 model_params:
-  backend: 'distilled'
-  model_id: ''
-  model_size: 'small'
-  device: 'cuda'
-  language: 'en'
+  backend: 'distilled'  # 'stock', 'finetuned', 'distilled'
+  model_id: ''          # will only be used when choosing 'finetuned' as backend
+  model_size: 'large'   # 'small', 'medium', 'large' - obsolete when uding a custom model_id
+  device: 'cuda'        # 'cuda', 'mps', 'cpu'
+  language: 'en'        # language is only used for tokenizing the output of the models, the models detect the language automatically - the distilled models only work with english
 generator_params:
-  samplerate: 16000
-  blocksize: 4000
-  adjustment_time: 5
+  samplerate: 16000     # samplerate of the audio inpit, anything you like
+  blocksize: 4000       # the size of the blocks that are processed by the generator at once, anything you like - 4000 is the best value i found
+  adjustment_time: 5    # duration in seconds for adjusting the silence threshold

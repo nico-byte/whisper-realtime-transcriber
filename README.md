@@ -1,4 +1,4 @@
-# pysistent
+# A Realtime Transcriber for various Whisper models, published on huggingface.
 
 
 

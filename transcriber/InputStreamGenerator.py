@@ -1,6 +1,10 @@
 import numpy as np
 import asyncio
-import sounddevice as sd
+try:
+    import sounddevice as sd
+except OSError as e:
+    print(e)
+    print("If `GLIBCXX_x.x.x' not found, try installing it with conda install -c conda-forge libstdcxx-ng=12")
 
 from utils.decorators import sync_timer
 
@@ -72,7 +76,7 @@ class InputStreamGenerator():
 
             # Stop recording after ADJUSTMENT_TIME seconds
             if blocks_processed >= self.ADJUSTMENT_TIME * (self.SAMPLERATE / self.BLOCKSIZE):
-                self.SILENCE_THRESHOLD = float(np.percentile(loudness_values, 50))
+                self.SILENCE_THRESHOLD = float(np.percentile(loudness_values, 20))
                 break
             
         print(f'\nSet SILENCE_THRESHOLD to {self.SILENCE_THRESHOLD}\n')

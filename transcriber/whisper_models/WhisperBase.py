@@ -2,7 +2,6 @@ import torch
 import asyncio
 
 from typing import List
-import matplotlib.pyplot as plt
 from utils.utils import tokenize_text, set_device
 from utils.decorators import async_timer
 from transformers import AutoProcessor, AutoModelForSpeechSeq2Seq
