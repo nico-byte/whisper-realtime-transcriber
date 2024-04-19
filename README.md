@@ -2,7 +2,7 @@
 
 ## Overview
 
-This repository contains the source code for a realtime transcriber for various whisper models, published on huggingface.
+This repository contains the source code for a realtime transcriber for various [whisper](https://github.com/openai/whisper) models, published on [huggingface](https://github.com/huggingface/transformers).
 
 ## Prerequisites
 
