@@ -6,9 +6,10 @@ This repository contains the source code for a realtime transcriber for various 
 
 ## Prerequisites
 
-Before you begin, make sure you have the following installed on your machine:
+Before you begin, make sure you meet the following prerequisites:
 
-- [Python + Conda](https://www.anaconda.com/download)
+- [Python + Conda](https://www.anaconda.com/download) installed on your machine.
+- Microphone connected to your machine.
 
 ## Installation Process
 
@@ -66,3 +67,16 @@ After completing the installation process, you can now use the transcriber:
 - The [example.py](./example.py) is another example of how to use the transcriber.
 
 Feel free to reach out if you encounter any issues or have questions!
+
+## How it works
+
+- The transcriber consists of two modules: a [Inputstream Generator](./transcriber/InputStreamGenerator.py) and a [Whisper Model](./transcriber/whisper_models/WhisperBase.py).
+- The Inputstream Generator reads the microphone input and passes it to the Whisper Model. The Whisper Model then generates the transcription.
+- This is happening in an async event loop so that the Whsiper Model can continuously generate transcriptions from the provided audio input, generated and processed by the Inputstream Generator.
+
+## ToDos
+
+- Add safety mechanisms for the case where the transcription takes more time than the audio input's size in seconds - now it simply exits the program to avoid memory issues when this happens.
+- Build a proper tokenizer to add custom casing and punctuation later on.
+- Add functionality to transcribe from audio files.
+- Get rid of hallucinations of the whisper models by preprocessing the audio input/dropping chunks without actual voice activity.
