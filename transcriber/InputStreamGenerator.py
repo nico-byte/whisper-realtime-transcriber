@@ -22,6 +22,7 @@ class InputStreamGenerator():
         self.SAMPLERATE = 16000 if kwargs['samplerate'] is None else kwargs['samplerate']
         self.BLOCKSIZE = 4000 if kwargs['blocksize'] is None else kwargs['blocksize']
         self.ADJUSTMENT_TIME = 5 if kwargs['adjustment_time'] is None else kwargs['adjustment_time']
+        self.min_chunks = 8 if kwargs['min_chunks'] is None else kwargs['min_chunks']
         self.memory_safe = True if kwargs['memory_safe'] is None else kwargs['memory_safe']
                 
         self.global_ndarray: np.ndarray = None
@@ -70,12 +71,14 @@ class InputStreamGenerator():
             # concatenate buffers if the end of the current buffer is not silent
             if (np.percentile(indata_flattened[-100:-1], 10) > self.SILENCE_THRESHOLD) or self.data_ready_event.is_set():
                 continue
-            else:
+            elif len(self.global_ndarray) / self.BLOCKSIZE >= self.min_chunks:
                 self.temp_ndarray = self.global_ndarray.copy()
                 self.temp_ndarray = self.temp_ndarray.flatten().astype(np.float32) / 32768.0
                 
                 self.global_ndarray = None
                 self.data_ready_event.set()
+            else:
+                continue
         
     async def _set_silence_threshold(self):
         """

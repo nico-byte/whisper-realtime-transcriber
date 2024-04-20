@@ -1,9 +1,8 @@
 import torch
 import asyncio
+import time
 
-from typing import List
-from utils.utils import tokenize_text, set_device
-from utils.decorators import async_timer
+from utils.utils import preprocess_text, set_device
 from transformers import AutoProcessor, AutoModelForSpeechSeq2Seq
 
 
@@ -22,8 +21,8 @@ class WhisperBase():
         self.language = kwargs['language']
                 
         self.transcript: str = ""
-        self.original_tokens: List = []
-        self.processed_tokens: List = []
+        self.full_sentences: str = ""
+        self.partial_sentence: str = ""
         
         # additional paramters for model inference
         self.gen_kwargs = {
@@ -60,25 +59,25 @@ class WhisperBase():
         """
         while True:
             await self.inputstream_generator.data_ready_event.wait()
+            start_time = time.perf_counter()
             
-            transcription_duration = await self._transcribe()
+            await self._transcribe()
                         
             # Compute the duration of the audio input and comparing it to the duration of inference.
             audio_duration = len(self.inputstream_generator.temp_ndarray) / self.inputstream_generator.SAMPLERATE
-            realtime_factor = transcription_duration / audio_duration
             
-            # Exit the program when real-time factor>1
-            if realtime_factor > 1 and self.inputstream_generator.memory_safe == False:
-                print(f"\nTranscription took longer ({transcription_duration:.3f}s) than length of input in seconds ({audio_duration:.3f}s).")
-                print(f"Real-Time Factor: {realtime_factor:.3f}, try to use a smaller model.")
-                print("Exiting now, to avoid potential memory issues...")
-                raise asyncio.CancelledError()
-            
-            await self._print_transcriptions()
+            await self._print_transcriptions() if self.full_sentences else None
             
             self.inputstream_generator.data_ready_event.clear()
             
-    @async_timer
+            transcription_duration = time.perf_counter() - start_time
+            realtime_factor = transcription_duration / audio_duration
+            
+            # Warn the user when real-time factor>1
+            if realtime_factor > 1 and self.inputstream_generator.memory_safe == False:
+                print(f"\nTranscription took longer ({transcription_duration:.3f}s) than length of input in seconds ({audio_duration:.3f}s).")
+                print(f"Real-Time Factor: {realtime_factor:.3f}, try to use a smaller model.")
+                        
     async def _transcribe(self):
         """
         Main logic for running the actual inference on the models.
@@ -93,8 +92,9 @@ class WhisperBase():
         generated_ids = await asyncio.to_thread(self.speech_model.generate, input_features=input_features, **self.gen_kwargs)
         transcript = await asyncio.to_thread(self.processor.batch_decode, generated_ids, skip_special_tokens=True, decode_with_timestamps=self.gen_kwargs["return_timestamps"])
         
-        self.transcript = transcript[0]
-        self.original_tokens, self.processed_tokens = await asyncio.to_thread(tokenize_text, self.transcript, self.language)
+        self.transcript += transcript[0]
+        self.full_sentences, self.partial_sentence = await asyncio.to_thread(preprocess_text, self.transcript)
+        self.transcript = self.partial_sentence
         
     async def _print_transcriptions(self):
         """
@@ -104,12 +104,12 @@ class WhisperBase():
         current_line_length: int = 0  # Current length of the line being printed
 
         # Calculate the new line length if the update is added
-        new_line_length: int = current_line_length + len(self.transcript)
+        new_line_length: int = current_line_length + len(self.full_sentences)
         if new_line_length > char_limit:
             print()  # Start a new line if the limit is exceeded
             current_line_length = 0  # Reset the current line length
-        print(self.transcript + " ", end='', flush=True)  # Print the update without a newline, flush to ensure it's displayed
-        current_line_length += len(self.transcript) # Update the current line length
+        print(self.full_sentences + " ", end='', flush=True)  # Print the update without a newline, flush to ensure it's displayed
+        current_line_length += len(self.full_sentences) # Update the current line length
     
     def get_models(self):
         print(f"Available models: {self.available_model_sizes}")

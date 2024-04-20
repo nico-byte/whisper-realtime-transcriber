@@ -1,32 +1,35 @@
 import string
 import torch
-import numpy as np
 
+from punctuators.models import PunctCapSegModelONNX
 from typing import Tuple, List
-from num2words import num2words
-from nltk.tokenize import WordPunctTokenizer
 
 
-def tokenize_text(text: str, language: str='en') -> Tuple[List[str], List[str]]:
-    # Keep original tokens
-    original_tokens =  WordPunctTokenizer().tokenize(text)
-    
-    # Convert text to lower case
-    text = text.lower()
+model: PunctCapSegModelONNX = PunctCapSegModelONNX.from_pretrained(
+    "1-800-BAD-CODE/xlm-roberta_punctuation_fullstop_truecase"
+)
 
-    # Convert numbers to words
-    # ordinal numbers will be converted to usual numbers - 2nd will be two
-    text = ' '.join(num2words(int(word), lang=language, ordinal=False) if word.isdigit() else word for word in text.split())
-    
-    # Keep German umlauts
+
+def preprocess_text(inputs: str) -> Tuple[List[str], List[str]]:
+    inputs.lower()
     remove_punct_map = {ord(char): None for char in string.punctuation if char not in ['ä', 'ö', 'ü', 'ß']}
+    inputs = inputs.translate(remove_punct_map).strip()
     
-    # Remove punctuation and strip white spaces
-    text = text.translate(remove_punct_map).strip()
-
-    processed_tokens = WordPunctTokenizer().tokenize(text)
-
-    return original_tokens, processed_tokens
+    inputs_list = []
+    inputs_list.append(inputs)
+    
+    outputs: List[List[str]] = model.infer(
+        texts=inputs_list, apply_sbd=True,
+    )
+    
+    outputs = outputs[0]
+        
+    partial_sentence = outputs[-1]
+    partial_sentence += " "
+    full_sentences = [text for text in outputs[:-1]]
+    full_sentences = " ".join(full_sentences)
+    
+    return full_sentences, partial_sentence
 
 
 def set_device(device) -> torch.device:

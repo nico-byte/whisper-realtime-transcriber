@@ -8,3 +8,4 @@ asyncio
 nltk
 num2words
 accelerate
+punctuators

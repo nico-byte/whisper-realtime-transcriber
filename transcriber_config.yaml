@@ -1,11 +1,12 @@
 model_params:
   backend: 'distilled'
   model_id: ''
-  model_size: 'small'
-  device: 'cpu'
+  model_size: 'large'
+  device: 'cuda'
   language: 'en'
 generator_params:
   samplerate: 16000
   blocksize: 4000
   adjustment_time: 5
-  memory_safe: False
+  min_chunks: 6
+  memory_safe: True
