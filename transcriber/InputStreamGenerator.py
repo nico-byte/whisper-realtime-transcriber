@@ -1,10 +1,12 @@
 import numpy as np
 import asyncio
+import sys
 try:
     import sounddevice as sd
 except OSError as e:
     print(e)
     print("If `GLIBCXX_x.x.x' not found, try installing it with: conda install -c conda-forge libstdcxx-ng=12")
+    sys.exit()
 
 from utils.decorators import sync_timer
 
@@ -20,6 +22,7 @@ class InputStreamGenerator():
         self.SAMPLERATE = 16000 if kwargs['samplerate'] is None else kwargs['samplerate']
         self.BLOCKSIZE = 4000 if kwargs['blocksize'] is None else kwargs['blocksize']
         self.ADJUSTMENT_TIME = 5 if kwargs['adjustment_time'] is None else kwargs['adjustment_time']
+        self.memory_safe = True if kwargs['memory_safe'] is None else kwargs['memory_safe']
                 
         self.global_ndarray: np.ndarray = None
         self.temp_ndarray: np.ndarray = None
@@ -58,7 +61,7 @@ class InputStreamGenerator():
             indata_flattened: np.ndarray = abs(indata.flatten())
             
             # discard buffers that contain mostly silence
-            if (np.percentile(indata_flattened, 10) <= self.SILENCE_THRESHOLD) and self.global_ndarray is None:
+            if ((np.percentile(indata_flattened, 10) <= self.SILENCE_THRESHOLD) and self.global_ndarray is None) or (self.memory_safe and self.data_ready_event.is_set()):
                 continue
             if self.global_ndarray is not None:
                 self.global_ndarray = np.concatenate((self.global_ndarray, indata), dtype='int16')

@@ -22,7 +22,8 @@ def check_config(args):
         'generator_params': {
             'samplerate': 16000,
             'blocksize': 4000,
-            'adjustment_time': 5
+            'adjustment_time': 5,
+            'memory_safe': True
         }
     }
     
@@ -73,7 +74,7 @@ if __name__ == '__main__':
     
     args = parser.parse_args()
     transcriber_conf = check_config(args)
-    
+    print(transcriber_conf)
     try:
         print("Activating wire...")
         main(transcriber_conf)
