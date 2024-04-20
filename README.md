@@ -46,13 +46,18 @@ After completing the installation process, you can now use the transcriber:
   model_params:
     backend: 'distilled'  # 'stock', 'finetuned', 'distilled'
     model_id: ''          # will only be used when choosing 'finetuned' as backend
-    model_size: 'large'   # 'small', 'medium', 'large' - obsolete when using a custom model_id
-    device: 'cuda'        # 'cuda', 'mps', 'cpu'
-    language: 'en'        # language is only used for tokenizing the output of the models, the models detect the language automatically - the distilled models only work with english
+    model_size: 'small'   # 'small', 'medium', 'large' - obsolete when using a custom model_id
+    device: 'cpu'         # 'cuda', 'mps', 'cpu'
+    language: 'en'        # language is only used for tokenizing the output of the models, the models detect the 
+                          # language automatically
+                          # -> the distilled models only support english language
   generator_params:
     samplerate: 16000     # samplerate of the audio input, anything you like
-    blocksize: 4000       # the size of the blocks that are processed by the generator at once, anything you like - 4000 is the best value i found
+    blocksize: 4000       # the size of the blocks that are processed by the generator at once, anything you like
+                          # -> 4000 is the best value i found
     adjustment_time: 5    # duration in seconds for adjusting the silence threshold
+    memory_safe: True     # if True, the generator will discard all buffers that are generated during model inference 
+                          # -> set to True if your device is not fast enough to keep up with the generator
   ```
 
 - Of course another file can be used to configure the transcriber. The default one is [transcriber_config.yaml](./transcriber_config.yaml).
@@ -78,7 +83,6 @@ Feel free to reach out if you encounter any issues or have questions!
 
 ## ToDos
 
-- Add safety mechanisms for the case where the transcription takes more time than the audio input's size in seconds - now it simply exits the program to avoid memory issues when this happens.
 - Build a proper tokenizer to add custom casing and punctuation later on.
 - Add functionality to transcribe from audio files.
 - Get rid of hallucinations of the whisper models by preprocessing the audio input/dropping chunks without actual voice activity.

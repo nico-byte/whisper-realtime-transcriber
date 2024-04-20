@@ -18,7 +18,8 @@ def main():
         'generator_params': {
             'samplerate': 16000,
             'blocksize': 4000,
-            'adjustment_time': 5
+            'adjustment_time': 5,
+            'memory_safe': True
         }
     }
     
