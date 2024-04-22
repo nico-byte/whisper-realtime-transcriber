@@ -1,6 +1,7 @@
 import torch
 import asyncio
 import time
+import string
 
 from utils.utils import preprocess_text, set_device
 from transformers import AutoProcessor, AutoModelForSpeechSeq2Seq
@@ -10,19 +11,19 @@ class WhisperBase():
     def __init__(self, inputstream_generator, **kwargs):        
         """
         :param inputstream_generator: the generator to use for streaming audio
-        :param language (str): the language to use for tokenizing the model output
         :param device (str): the device to use for inference
         """
         self.speech_model = None
         self.processor = None
         
         self.inputstream_generator = inputstream_generator
-        
-        self.language = kwargs['language']
-                
+                        
         self.transcript: str = ""
         self.full_sentences: str = ""
         self.partial_sentence: str = ""
+        
+        self.punctuate_truecase = kwargs['punctuate_truecase']
+        self.remove_punct_map = {ord(char): None for char in string.punctuation if char not in ['ä', 'ö', 'ü', 'ß']}
         
         # additional paramters for model inference
         self.gen_kwargs = {
@@ -66,7 +67,11 @@ class WhisperBase():
             # Compute the duration of the audio input and comparing it to the duration of inference.
             audio_duration = len(self.inputstream_generator.temp_ndarray) / self.inputstream_generator.SAMPLERATE
             
-            await self._print_transcriptions() if self.full_sentences else None
+            if self.punctuate_truecase:
+                await self._print_transcriptions() if self.full_sentences else None
+            else:
+                await self._print_transcriptions()
+                self.transcript = ""
             
             self.inputstream_generator.data_ready_event.clear()
             
@@ -93,23 +98,32 @@ class WhisperBase():
         transcript = await asyncio.to_thread(self.processor.batch_decode, generated_ids, skip_special_tokens=True, decode_with_timestamps=self.gen_kwargs["return_timestamps"])
         
         self.transcript += transcript[0]
-        self.full_sentences, self.partial_sentence = await asyncio.to_thread(preprocess_text, self.transcript)
-        self.transcript = self.partial_sentence
+        await asyncio.to_thread(self._strip_transcript)
+        if self.punctuate_truecase:
+            self.full_sentences, self.partial_sentence = await asyncio.to_thread(preprocess_text, self.transcript)
+            self.transcript = self.partial_sentence
+    
+    def _strip_transcript(self):
+        self.transcript = self.transcript.lower()
+        self.transript = self.transcript.translate(self.remove_punct_map).strip()
+        self.transcript = self.transcript.replace(".", "")
         
     async def _print_transcriptions(self):
         """
         Prints the model trasncription.
         """
+        output = self.full_sentences if self.punctuate_truecase else self.transcript
+        
         char_limit: int = 77  # The character limit after which a new line should start
         current_line_length: int = 0  # Current length of the line being printed
 
         # Calculate the new line length if the update is added
-        new_line_length: int = current_line_length + len(self.full_sentences)
+        new_line_length: int = current_line_length + len(output)
         if new_line_length > char_limit:
             print()  # Start a new line if the limit is exceeded
             current_line_length = 0  # Reset the current line length
-        print(self.full_sentences + " ", end='', flush=True)  # Print the update without a newline, flush to ensure it's displayed
-        current_line_length += len(self.full_sentences) # Update the current line length
+        print(output + " ", end='', flush=True)  # Print the update without a newline, flush to ensure it's displayed
+        current_line_length += len(output) # Update the current line length
     
     def get_models(self):
         print(f"Available models: {self.available_model_sizes}")

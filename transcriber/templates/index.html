@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Choice Buttons</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <section>
+        <h2>Configure whisper model:</h2>
+        <select name="backend" id="backend">
+            <option value="select backend" selected disabled>select backend</option>
+            <option value="distilled">distilled</option>
+            <option value="finetuned">finetuned</option>
+            <option value="stock">stock</option>
+        </select>
+        <select name="model_size" id="model_size">
+            <option value="select model_size" selected disabled>select model_size</option>
+            <option value="small">small</option>
+            <option value="medium">medium</option>
+            <option value="large">large</option>
+    	</select>
+        <select name="device" id="device">
+            <option value="select device" selected disabled>select device</option>
+            <option value="cuda">cuda</option>
+            <option value="mps">mps</option>
+            <option value="cpu">cpu</option>
+        </select>
+        <div class="composed-output">
+            <div class="generator-config">
+            <h3>Configure generator:</h3>
+            <div class="container">
+                <div class="material-textfield">
+                    <input id="samplerate" placeholder="samplerate" type="text" value="16000" required pattern="[0-9].\d{8}|\d{11}" title="set samplerate">
+                    <label for="inputSamplerate">samplerate</label>
+                </div>
+            </div><br>
+            <div class="container">
+                <div class="material-textfield">
+                    <input id="blocksize" placeholder="blocksize" type="text" value="4000" required pattern="[0-9].\d{8}|\d{11}" title="set blocksize">
+                    <label for="inputSamplerate">samplerate</label>
+                </div>
+            </div><br>
+            <select name="memory_safe" id="memory_safe">
+                <option value="memeory_safe" selected disabled>memory_safe</option>
+                <option value=True>True</option>
+                <option value=False>False</option>
+            </select><br>
+            <br>
+            <button id="InitializeButton" type="button" onclick="processChoice()">Initialize</button>
+            </div>
+                <div class="output-window">
+                    <p id="output"></p>
+                    <button id="startButton" type="button" onclick="processChoice()">Start</button>
+                </div>
+            </div>
+        </div>
+    </section>
+    <script>
+        function processChoice() {
+            var choice = document.querySelector('input[name="choice"]:checked').value;
+            document.getElementById("output1").value = "You chose: " + choice;
+            document.getElementById("output2").value = "Processing choice...";
+        }
+    </script>
+</body>
+</html>

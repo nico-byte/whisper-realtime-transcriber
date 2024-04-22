@@ -1,4 +1,3 @@
-import string
 import torch
 
 from punctuators.models import PunctCapSegModelONNX
@@ -11,10 +10,6 @@ model: PunctCapSegModelONNX = PunctCapSegModelONNX.from_pretrained(
 
 
 def preprocess_text(inputs: str) -> Tuple[List[str], List[str]]:
-    inputs.lower()
-    remove_punct_map = {ord(char): None for char in string.punctuation if char not in ['ä', 'ö', 'ü', 'ß']}
-    inputs = inputs.translate(remove_punct_map).strip()
-    
     inputs_list = []
     inputs_list.append(inputs)
     

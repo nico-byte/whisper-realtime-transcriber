@@ -3,7 +3,7 @@ model_params:
   model_id: ''
   model_size: 'large'
   device: 'cuda'
-  language: 'en'
+  punctuate_truecase: False
 generator_params:
   samplerate: 16000
   blocksize: 4000

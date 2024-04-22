@@ -48,9 +48,7 @@ After completing the installation process, you can now use the transcriber:
     model_id: ''          # will only be used when choosing 'finetuned' as backend
     model_size: 'small'   # 'small', 'medium', 'large' - obsolete when using a custom model_id
     device: 'cpu'         # 'cuda', 'mps', 'cpu'
-    language: 'en'        # language is only used for tokenizing the output of the models, the models detect the 
-                          # language automatically
-                          # -> the distilled models only support english language
+    punctuate_truecas: False  # whether to punctuate/truecas the model output or not because in partial trnascriptions these might be worng
   generator_params:
     samplerate: 16000     # samplerate of the audio input, anything you like
     blocksize: 4000       # the size of the blocks that are processed by the generator at once, anything you like
