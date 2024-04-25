@@ -81,6 +81,6 @@ Feel free to reach out if you encounter any issues or have questions!
 
 ## ToDos
 
-- Build a proper tokenizer to add custom casing and punctuation later on.
+- Add webinterface for convenience.
 - Add functionality to transcribe from audio files.
 - Get rid of hallucinations of the whisper models by preprocessing the audio input/dropping chunks without actual voice activity.
