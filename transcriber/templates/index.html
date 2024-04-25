@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Choice Buttons</title>
+    <title>Whisper Realtime Transcriber</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
@@ -47,21 +47,16 @@
                 <option value=False>False</option>
             </select><br>
             <br>
-            <button id="InitializeButton" type="button" onclick="processChoice()">Initialize</button>
             </div>
                 <div class="output-window">
-                    <p id="output"></p>
-                    <button id="startButton" type="button" onclick="processChoice()">Start</button>
+                    <div class="sub-output-window">
+                        <p id="output"></p>
+                    </div>
                 </div>
+                <button id="startButton" type="button">Start</button>
             </div>
         </div>
     </section>
-    <script>
-        function processChoice() {
-            var choice = document.querySelector('input[name="choice"]:checked').value;
-            document.getElementById("output1").value = "You chose: " + choice;
-            document.getElementById("output2").value = "Processing choice...";
-        }
-    </script>
+    <script src="{{url_for('static', filename='script.js')}}"></script>
 </body>
 </html>
