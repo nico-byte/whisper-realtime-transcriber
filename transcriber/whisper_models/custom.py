@@ -4,7 +4,7 @@ from transcriber.whisper_models.base import WhisperBase
 
 class CustomWhisper(WhisperBase):
     @sync_timer(print_statement="Loaded finetuned whisper model", return_some=False)
-    def __init__(self, inputstream_generator, **kwargs):        
+    def __init__(self, inputstream_generator, model_size='small', model_id="bofenghuang/whisper-small-cv11-german", punctuate_truecase=False, device='cpu'):        
         """
         :param inputstream_generator: the generator to use for streaming audio
         :param model_id (str): alternative model id to use for inference
@@ -12,13 +12,13 @@ class CustomWhisper(WhisperBase):
         :param language (str): the language to use for tokenizing the model output
         :param device (str): the device to use for inference
         """
-        super().__init__(inputstream_generator, **kwargs)
+        super().__init__(inputstream_generator, punctuate_truecase, device)
         self.available_model_sizes = ["small", "medium", "large-v2"]
         
-        self.model_size = kwargs['model_size']
-        self.model_size = "large-v2" if kwargs['model_size'] == "large" else self.model_size
+        self.model_size = model_size
+        self.model_size = "large-v2" if model_size == "large" else self.model_size
                 
-        self.model_id = kwargs['model_id'] if kwargs['model_id'] is not None else f"bofenghuang/whisper-{self.model_size}-cv11-german"
+        self.model_id = model_id
         
         self._load()
         
@@ -26,7 +26,7 @@ class CustomWhisper(WhisperBase):
         if self.inputstream_generator.SAMPLERATE != self.processor.feature_extractor.sampling_rate:
             self.inputstream_generator.SAMPLERATE = self.processor.feature_extractor.sampling_rate
         
-        if kwargs['model_size'] not in self.available_model_sizes:
+        if model_size not in self.available_model_sizes:
             print(f"Model size not supported. Defaulting to {self.model_size}.")
         
         print(f"Checked model parameters: \n\

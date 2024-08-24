@@ -1,5 +1,5 @@
+backend: 'distilled'
 model_params:
-  backend: 'distilled'
   model_id: ''
   model_size: 'medium'
   device: 'cpu'

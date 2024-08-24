@@ -8,7 +8,7 @@ from transformers import AutoProcessor, AutoModelForSpeechSeq2Seq
 
 
 class WhisperBase():
-    def __init__(self, inputstream_generator, **kwargs):
+    def __init__(self, inputstream_generator, punctuate_truecase=False, device='cpu'):
         """
         :param inputstream_generator: the generator to use for streaming audio
         :param device (str): the device to use for inference
@@ -22,7 +22,7 @@ class WhisperBase():
         self.full_sentences: str = ""
         self.partial_sentence: str = ""
         
-        self.punctuate_truecase = kwargs['punctuate_truecase']
+        self.punctuate_truecase = punctuate_truecase
         self.remove_punct_map = {ord(char): None for char in string.punctuation if char not in ['ä', 'ö', 'ü', 'ß']}
         
         # additional paramters for model inference
@@ -31,11 +31,11 @@ class WhisperBase():
             "num_beams": 1,
             "return_timestamps": False,
             }
-        self.device = set_device(kwargs['device'])
+        self.device = set_device(device)
                 
         self.torch_dtype = torch.float16 if self.device == torch.device("cuda") else torch.float32
         
-        if torch.device == "cuda": torch.backends.cuda.matmul.allow_tf32
+        torch.backends.cuda.matmul.allow_tf32 if self.device == torch.device("cuda") else None
         
         self.inputstream_generator = inputstream_generator
         

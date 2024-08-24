@@ -13,17 +13,17 @@ from utils.decorators import sync_timer
 
 class InputStreamGenerator():
     @sync_timer(print_statement="Loaded inputstream generator", return_some=False)
-    def __init__(self, **kwargs):
+    def __init__(self, samplerate=16000, blocksize=4000, adjustment_time=5, min_chunks=8, memory_safe=True):
         """
         :param samplerate (int): the samplerate to use for the audio input
         :param blocksize (int): the blocksize to use for the audio input
         :param adjustment_time (int): the time to wait for adjusting the silence_threshold
         """
-        self.SAMPLERATE = 16000 if kwargs['samplerate'] is None else kwargs['samplerate']
-        self.BLOCKSIZE = 4000 if kwargs['blocksize'] is None else kwargs['blocksize']
-        self.ADJUSTMENT_TIME = 5 if kwargs['adjustment_time'] is None else kwargs['adjustment_time']
-        self.min_chunks = 8 if kwargs['min_chunks'] is None else kwargs['min_chunks']
-        self.memory_safe = True if kwargs['memory_safe'] is None else kwargs['memory_safe']
+        self.SAMPLERATE = samplerate
+        self.BLOCKSIZE = blocksize
+        self.ADJUSTMENT_TIME = adjustment_time
+        self.min_chunks = min_chunks
+        self.memory_safe = memory_safe
                 
         self.global_ndarray: np.ndarray = None
         self.temp_ndarray: np.ndarray = None

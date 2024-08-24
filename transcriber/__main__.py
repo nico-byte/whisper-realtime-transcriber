@@ -12,8 +12,8 @@ from transcriber.InputStreamGenerator import InputStreamGenerator
 def check_config(args):
     # Set default values in case config file is borken/nonexistent
     defaults = {
+        'backend': 'stock',
         'model_params': {
-            'backend': 'stock',
             'model_id': None,
             'model_size': 'small',
             'device': 'cpu',
@@ -45,7 +45,9 @@ def main(transcriber_conf):
     inputstream_generator = InputStreamGenerator(**transcriber_conf['generator_params'])
     
     # Load model based on desired backend
-    backend = transcriber_conf['model_params']['backend']
+    backend = transcriber_conf['backend']
+    if backend != 'custom': del transcriber_conf['model_params']['model_id']
+    
     if backend == "finetuned":
         asr_model = CustomWhisper(inputstream_generator=inputstream_generator, **transcriber_conf['model_params'])
     elif backend == "stock":
