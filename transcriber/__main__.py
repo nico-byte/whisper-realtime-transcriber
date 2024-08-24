@@ -4,7 +4,7 @@ import argparse
 import yaml
 
 from typing import Dict
-from transcriber.whisper_models.finetuned import FinetunedWhisper
+from transcriber.whisper_models.custom import CustomWhisper
 from transcriber.whisper_models.distilled import DistilWhisper
 from transcriber.whisper_models.stock import StockWhisper
 from transcriber.InputStreamGenerator import InputStreamGenerator
@@ -47,7 +47,7 @@ def main(transcriber_conf):
     # Load model based on desired backend
     backend = transcriber_conf['model_params']['backend']
     if backend == "finetuned":
-        asr_model = FinetunedWhisper(inputstream_generator=inputstream_generator, **transcriber_conf['model_params'])
+        asr_model = CustomWhisper(inputstream_generator=inputstream_generator, **transcriber_conf['model_params'])
     elif backend == "stock":
         asr_model = StockWhisper(inputstream_generator=inputstream_generator, **transcriber_conf['model_params'])
     else:

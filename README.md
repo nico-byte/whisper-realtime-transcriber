@@ -2,13 +2,13 @@
 
 ## Overview
 
-This repository contains the source code for a realtime transcriber for various [whisper](https://github.com/openai/whisper) models, published on [huggingface](https://github.com/huggingface/transformers).
+This repository contains the source code of a realtime transcriber for various [whisper](https://github.com/openai/whisper) models, published on [huggingface](https://github.com/huggingface/transformers).
 
 ## Prerequisites
 
 Before you begin, make sure you meet the following prerequisites:
 
-- [Python + Conda](https://www.anaconda.com/download) installed on your machine.
+- [Python 3.10.12](https://www.python.org) installed on your machine.
 - Microphone connected to your machine.
 
 ## Installation Process
@@ -16,26 +16,41 @@ Before you begin, make sure you meet the following prerequisites:
 Follow the steps below to set up the project on your local machine:
 
 1. **Clone the Project:**
-   - Clone this repository to your local machine using `git`:
-     ```bash
-     git clone https://github.com/nico-byte/whisper-realtime-transcriber
-     ```
+  - Clone this repository to your local machine using `git`:
+    ```bash
+    git clone https://github.com/nico-byte/whisper-realtime-transcriber
+    ```
 
-2. **Create conda environment:**
-   - Create a `conda` environment named `whisper-realtime`:
-     ```bash
-     conda create --name whisper-realtime python=3.10.12
-     ```
-   - Now activate the `conda` environment:
-     ```bash
-     conda activate whisper-realtime
-     ``` 
+2. **Enable CUDA (optional)**
+  - If a CUDA device should be used for inference, PyTorch has to be installed with cuda support.
+  - To achieve this, one must uncomment line 2 and 3 in the `requirements.in`file, and also comment the 4th line.
 
 3. **Install dependencies:**
-   - Install all dependencies via `pip`:
-     ```bash
-     pip install -r requirements.txt
-     ```
+  - Install all dependencies via `venv`:
+    - Make the install script (if needed):
+      ```bash
+      chmod +x install.sh
+      ```
+    - Execute the install script:
+      ```bash
+      ./install.sh
+      ```
+  - Install all dependencies via [Conda](https://anaconda.org):
+    - Create a `conda` environment named `whisper-realtime`:
+      ```bash
+      conda create --name whisper-realtime python=3.10.12
+      ```
+    - Now activate the `conda` environment:
+      ```bash
+      conda activate whisper-realtime
+      ```
+    - Install pip-tools and compile/install dependencies:
+      ```bash
+      pip install pip-tools
+      pip-compile
+      pip install -r requirements.txt
+      ```
+
 
 ## Usage
 
@@ -48,7 +63,7 @@ After completing the installation process, you can now use the transcriber:
     model_id: ''          # will only be used when choosing 'finetuned' as backend
     model_size: 'small'   # 'small', 'medium', 'large' - obsolete when using a custom model_id
     device: 'cpu'         # 'cuda', 'mps', 'cpu'
-    punctuate_truecas: False  # whether to punctuate/truecas the model output or not because in partial trnascriptions these might be worng
+    punctuate_truecase: False  # whether to punctuate/truecas the model output or not because in partial trnascriptions these might be worng
   generator_params:
     samplerate: 16000     # samplerate of the audio input, anything you like
     blocksize: 4000       # the size of the blocks that are processed by the generator at once, anything you like

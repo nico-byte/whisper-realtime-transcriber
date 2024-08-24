@@ -1,7 +1,7 @@
 import asyncio
 import sys
 
-from transcriber.whisper_models.finetuned import FinetunedWhisper
+from transcriber.whisper_models.custom import CustomWhisper
 from transcriber.whisper_models.distilled import DistilWhisper
 from transcriber.whisper_models.stock import StockWhisper
 from transcriber.InputStreamGenerator import InputStreamGenerator

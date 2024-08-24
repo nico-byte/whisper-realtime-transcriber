@@ -1,8 +1,8 @@
 model_params:
   backend: 'distilled'
   model_id: ''
-  model_size: 'large'
-  device: 'cuda'
+  model_size: 'medium'
+  device: 'cpu'
   punctuate_truecase: False
 generator_params:
   samplerate: 16000

@@ -8,7 +8,7 @@ from transformers import AutoProcessor, AutoModelForSpeechSeq2Seq
 
 
 class WhisperBase():
-    def __init__(self, inputstream_generator, **kwargs):        
+    def __init__(self, inputstream_generator, **kwargs):
         """
         :param inputstream_generator: the generator to use for streaming audio
         :param device (str): the device to use for inference
@@ -31,12 +31,11 @@ class WhisperBase():
             "num_beams": 1,
             "return_timestamps": False,
             }
-                    
         self.device = set_device(kwargs['device'])
                 
         self.torch_dtype = torch.float16 if self.device == torch.device("cuda") else torch.float32
         
-        torch.backends.cuda.matmul.allow_tf32 = True
+        if torch.device == "cuda": torch.backends.cuda.matmul.allow_tf32
         
         self.inputstream_generator = inputstream_generator
         
@@ -79,7 +78,7 @@ class WhisperBase():
             realtime_factor = transcription_duration / audio_duration
             
             # Warn the user when real-time factor>1
-            if realtime_factor > 1 and self.inputstream_generator.memory_safe == False:
+            if realtime_factor > 1 and not self.inputstream_generator.memory_safe:
                 print(f"\nTranscription took longer ({transcription_duration:.3f}s) than length of input in seconds ({audio_duration:.3f}s).")
                 print(f"Real-Time Factor: {realtime_factor:.3f}, try to use a smaller model.")
                         

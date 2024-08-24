@@ -1,5 +1,5 @@
 from utils.decorators import sync_timer
-from transcriber.whisper_models.WhisperBase import WhisperBase
+from transcriber.whisper_models.base import WhisperBase
 
 
 class DistilWhisper(WhisperBase):
