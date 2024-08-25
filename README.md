@@ -26,7 +26,7 @@ Follow the steps below to set up the project on your local machine:
   - To achieve this, one must uncomment line 2 and 3 in the `requirements.in`file, and also comment the 4th line.
 
 3. **Install dependencies:**
-  - Install all dependencies via `venv`:
+  - Either install all dependencies via `venv`:
     - Make the install script (if needed):
       ```bash
       chmod +x install.sh
@@ -35,7 +35,7 @@ Follow the steps below to set up the project on your local machine:
       ```bash
       ./install.sh
       ```
-  - Install all dependencies via [Conda](https://anaconda.org):
+  - Or install all dependencies via [Conda](https://anaconda.org):
     - Create a `conda` environment named `whisper-realtime`:
       ```bash
       conda create --name whisper-realtime python=3.10.12
@@ -69,6 +69,7 @@ After completing the installation process, you can now use the transcriber:
     blocksize: 4000       # the size of the blocks that are processed by the generator at once, anything you like
                           # -> 4000 is the best value i found
     adjustment_time: 5    # duration in seconds for adjusting the silence threshold
+    min_chunks: 6         # of how many chunks an audio snippet need to consist, before it will be forwarded to the model
     memory_safe: True     # if True, the generator will discard all buffers that are generated during model inference 
                           # -> set to True if your device is not fast enough to keep up with the generator
   ```
@@ -88,7 +89,7 @@ Feel free to reach out if you encounter any issues or have questions!
 
 ## How it works
 
-- The transcriber consists of two modules: a [Inputstream Generator](./transcriber/InputStreamGenerator.py) and a [Whisper Model](./transcriber/whisper_models/WhisperBase.py).
+- The transcriber consists of two modules: a [Inputstream Generator](./transcriber/InputStreamGenerator.py) and a [Whisper Model](./transcriber/whisper_models/base.py).
 - The implementation of the Inputstream Generator is based on this [implemantation](https://github.com/tobiashuttinger/openai-whisper-realtime).
 - The Inputstream Generator reads the microphone input and passes it to the Whisper Model. The Whisper Model then generates the transcription.
 - This is happening in an async event loop so that the Whsiper Model can continuously generate transcriptions from the provided audio input, generated and processed by the Inputstream Generator.
