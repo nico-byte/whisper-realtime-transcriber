@@ -82,7 +82,7 @@ class InputStreamGenerator():
         
     async def _set_silence_threshold(self):
         """
-        Automatically adjust the silence threshold based on the 2th percentile of the loudness of the input.
+        Automatically adjust the silence threshold based on the 20th percentile of the loudness of the input.
         """
         blocks_processed: int = 0
         loudness_values: list = []

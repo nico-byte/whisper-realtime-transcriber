@@ -1,4 +1,4 @@
-# if one want to use torch with cuda, comment out line 3 and comment line 4
+# if one want to use torch with cuda, comment out line 2 and 3 + comment line 4
 # --find-links https://download.pytorch.org/whl/cu118/torch_stable.html
 # torch==2.1.1+cu118
 torch==2.1.1
