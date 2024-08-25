@@ -97,5 +97,6 @@ Feel free to reach out if you encounter any issues or have questions!
 ## ToDos
 
 - Add webinterface for convenience.
+  - I'v tried a few frameworks like Gradio or DearPyGui, but i find it tedious to work with them so this is not a priority.
 - Add functionality to transcribe from audio files.
-- Get rid of hallucinations of the whisper models by preprocessing the audio input/dropping chunks without actual voice activity.
+- Get somehow rid of the hallucinations of the whisper models when no voice is active.

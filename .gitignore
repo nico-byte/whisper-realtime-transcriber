@@ -5,4 +5,6 @@
 __pycache__/
 ./vscode
 .venv
+.**
+gradio**
 **/tmp**/

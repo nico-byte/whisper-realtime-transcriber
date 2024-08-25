@@ -20,8 +20,6 @@ click==8.1.7
     # via nltk
 coloredlogs==15.0.1
     # via onnxruntime
-dearpygui==1.11.1
-    # via -r requirements.in
 docopt==0.6.2
     # via num2words
 ffmpeg-python==0.2.0
