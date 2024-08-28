@@ -1,6 +1,4 @@
-backend: 'distilled'
 model_params:
-  model_id: ''
   model_size: 'medium'
   device: 'cpu'
   punctuate_truecase: False

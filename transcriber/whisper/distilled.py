@@ -6,18 +6,40 @@ import string
 from utils.utils import preprocess_text, set_device
 from transformers import AutoProcessor, AutoModelForSpeechSeq2Seq
 
+from utils.decorators import sync_timer
 
-class WhisperBase():
-    def __init__(self, inputstream_generator, punctuate_truecase=False, device='cpu'):
+
+class DistilWhisper:
+    @sync_timer(print_statement="Loaded distilled whisper model", return_some=False)
+    def __init__(self, inputstream_generator, model_size='small', punctuate_truecase=False, device='cpu'):        
         """
         :param inputstream_generator: the generator to use for streaming audio
+        :param model_size (str): the size of the model to use for inference
+        :param language (str): the language to use for tokenizing the model output
         :param device (str): the device to use for inference
         """
-        self.speech_model = None
-        self.processor = None
+        self.available_model_sizes = ["small", "medium", "large-v3"]
         
+        self.model_size = model_size
+        self.model_size = "large-v3" if model_size == "large" else self.model_size
+                
+        self.model_id = f"distil-whisper/distil-{self.model_size}.en" if self.model_size in self.available_model_sizes[:2] else f"distil-whisper/distil-{self.model_size}"
+            
         self.inputstream_generator = inputstream_generator
-                        
+        
+        if model_size not in self.available_model_sizes:
+            print(f"Model size not supported. Defaulting to {self.model_size}.")
+            
+        self.device = set_device(device)
+        
+        self.torch_dtype = torch.float16 if self.device == torch.device("cuda") else torch.float32
+        torch.backends.cuda.matmul.allow_tf32 if self.device == torch.device("cuda") else None
+        
+        print(f"Checked model parameters: \n\
+            model_id: {self.model_id}\n\
+                device: {self.device}\n\
+                    torch_dtype: {self.torch_dtype}")
+        
         self.transcript: str = ""
         self.full_sentences: str = ""
         self.partial_sentence: str = ""
@@ -25,33 +47,26 @@ class WhisperBase():
         self.punctuate_truecase = punctuate_truecase
         self.remove_punct_map = {ord(char): None for char in string.punctuation if char not in ['ä', 'ö', 'ü', 'ß']}
         
-        # additional paramters for model inference
-        self.gen_kwargs = {
-            "max_new_tokens": 128,
-            "num_beams": 1,
-            "return_timestamps": False,
-            }
-        self.device = set_device(device)
-                
-        self.torch_dtype = torch.float16 if self.device == torch.device("cuda") else torch.float32
-        
-        torch.backends.cuda.matmul.allow_tf32 if self.device == torch.device("cuda") else None
-        
-        self.inputstream_generator = inputstream_generator
-        
-    def _load(self):
-        """
-        Load model and processor for inference.
-        """
-        model = AutoModelForSpeechSeq2Seq.from_pretrained(
+        self.speech_model = AutoModelForSpeechSeq2Seq.from_pretrained(
             self.model_id, 
             torch_dtype=self.torch_dtype, 
             low_cpu_mem_usage=True, 
             use_safetensors=True).to(self.device)
-        processor = AutoProcessor.from_pretrained(self.model_id)
         
-        self.speech_model = model
-        self.processor = processor
+        self.processor = AutoProcessor.from_pretrained(self.model_id)
+        
+        #additional parameters for model inference
+        self.gen_kwargs = {
+            "max_new_tokens": 128,
+            "num_beams": 1,
+            "return_timestamps": False,
+            "pad_token_id": self.processor.tokenizer.pad_token_id,
+            "eos_token_id": self.processor.tokenizer.eos_token_id
+            }
+        
+        # Check if generator samplerate matches models samplerate
+        if self.inputstream_generator.SAMPLERATE != self.processor.feature_extractor.sampling_rate:
+            self.inputstream_generator.SAMPLERATE = self.processor.feature_extractor.sampling_rate
                 
     async def run_inference(self):
         """
@@ -81,7 +96,7 @@ class WhisperBase():
             if realtime_factor > 1 and not self.inputstream_generator.memory_safe:
                 print(f"\nTranscription took longer ({transcription_duration:.3f}s) than length of input in seconds ({audio_duration:.3f}s).")
                 print(f"Real-Time Factor: {realtime_factor:.3f}, try to use a smaller model.")
-                        
+        
     async def _transcribe(self):
         """
         Main logic for running the actual inference on the models.

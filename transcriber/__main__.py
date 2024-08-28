@@ -4,20 +4,15 @@ import argparse
 import yaml
 
 from typing import Dict
-from transcriber.whisper_models.custom import CustomWhisper
-from transcriber.whisper_models.distilled import DistilWhisper
-from transcriber.whisper_models.stock import StockWhisper
+from transcriber.whisper.distilled import DistilWhisper
 from transcriber.InputStreamGenerator import InputStreamGenerator
 
 def check_config(args):
     # Set default values in case config file is borken/nonexistent
     defaults = {
-        'backend': 'stock',
         'model_params': {
-            'model_id': None,
             'model_size': 'small',
             'device': 'cpu',
-            'language': 'en'
         },
         'generator_params': {
             'samplerate': 16000,
@@ -43,17 +38,8 @@ def check_config(args):
 def main(transcriber_conf):
     # Load inputstream_generator
     inputstream_generator = InputStreamGenerator(**transcriber_conf['generator_params'])
-    
-    # Load model based on desired backend
-    backend = transcriber_conf['backend']
-    if backend != 'custom': del transcriber_conf['model_params']['model_id']
-    
-    if backend == "finetuned":
-        asr_model = CustomWhisper(inputstream_generator=inputstream_generator, **transcriber_conf['model_params'])
-    elif backend == "stock":
-        asr_model = StockWhisper(inputstream_generator=inputstream_generator, **transcriber_conf['model_params'])
-    else:
-        asr_model = DistilWhisper(inputstream_generator=inputstream_generator, **transcriber_conf['model_params'])
+        
+    asr_model = DistilWhisper(inputstream_generator=inputstream_generator, **transcriber_conf['model_params'])
     
     asyncio.run(start(inputstream_generator, asr_model))
         

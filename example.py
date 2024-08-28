@@ -1,19 +1,17 @@
 import asyncio
 import sys
 
-from transcriber.whisper_models.custom import CustomWhisper
-from transcriber.whisper_models.distilled import DistilWhisper
-from transcriber.whisper_models.stock import StockWhisper
+from transcriber.whisper.custom import CustomWhisper
+from transcriber.whisper.distilled import DistilWhisper
+from transcriber.whisper.stock import StockWhisper
 from transcriber.InputStreamGenerator import InputStreamGenerator
 
 
 def main():
     transcriber_conf = {
         'model_params': {
-            'model_id': None,
             'model_size': 'small',
             'device': 'cpu',
-            'language': 'en'
         },
         'generator_params': {
             'samplerate': 16000,
