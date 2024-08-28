@@ -59,8 +59,6 @@ After completing the installation process, you can now use the transcriber:
 - First let's look at the [transcriber_config.yaml](./transcriber_config.yaml) file. This file contains all the necessary information for the generator and models of the transcriber to run.
   ```yaml
   model_params:
-    backend: 'distilled'  # 'stock', 'finetuned', 'distilled'
-    model_id: ''          # will only be used when choosing 'finetuned' as backend
     model_size: 'small'   # 'small', 'medium', 'large' - obsolete when using a custom model_id
     device: 'cpu'         # 'cuda', 'mps', 'cpu'
     punctuate_truecase: False  # whether to punctuate/truecas the model output or not because in partial trnascriptions these might be worng

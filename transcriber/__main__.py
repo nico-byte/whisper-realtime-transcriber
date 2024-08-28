@@ -7,21 +7,22 @@ from typing import Dict
 from transcriber.whisper.distilled import DistilWhisper
 from transcriber.InputStreamGenerator import InputStreamGenerator
 
+
 def check_config(args):
-    # Set default values in case config file is borken/nonexistent
+    # Set default values in case config file is broken/nonexistent
     defaults = {
-        'model_params': {
-            'model_size': 'small',
-            'device': 'cpu',
+        "model_params": {
+            "model_size": "small",
+            "device": "cpu",
         },
-        'generator_params': {
-            'samplerate': 16000,
-            'blocksize': 4000,
-            'adjustment_time': 5,
-            'memory_safe': True
-        }
+        "generator_params": {
+            "samplerate": 16000,
+            "blocksize": 4000,
+            "adjustment_time": 5,
+            "memory_safe": True,
+        },
     }
-    
+
     try:
         with open(args.transcriber_conf) as f:
             config = yaml.load(f, Loader=yaml.FullLoader)
@@ -32,22 +33,26 @@ def check_config(args):
     except FileNotFoundError:
         print(f"Could not find config file in {args.transcriber_conf}.")
         return defaults
-    
+
     return config
+
 
 def main(transcriber_conf):
     # Load inputstream_generator
-    inputstream_generator = InputStreamGenerator(**transcriber_conf['generator_params'])
-        
-    asr_model = DistilWhisper(inputstream_generator=inputstream_generator, **transcriber_conf['model_params'])
-    
+    inputstream_generator = InputStreamGenerator(**transcriber_conf["generator_params"])
+
+    asr_model = DistilWhisper(
+        inputstream_generator=inputstream_generator, **transcriber_conf["model_params"]
+    )
+
     asyncio.run(start(inputstream_generator, asr_model))
-        
+
+
 async def start(inputstream_generator, asr_model):
     # Create a transcribe and inputstream task
     inputstream_task = asyncio.create_task(inputstream_generator.process_audio())
     transcribe_task = asyncio.create_task(asr_model.run_inference())
-    
+
     # Execute the tasks and catch exception
     try:
         await asyncio.gather(inputstream_task, transcribe_task)
@@ -55,11 +60,16 @@ async def start(inputstream_generator, asr_model):
         print("\nTranscribe task cancelled.")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Add parser and arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument('--transcriber_conf', type=str, default="./transcriber_config.yaml", help='Config file for the transcriber (default: ./transcriber_config.yaml).')
-    
+    parser.add_argument(
+        "--transcriber_conf",
+        type=str,
+        default="./transcriber_config.yaml",
+        help="Config file for the transcriber (default: ./transcriber_config.yaml).",
+    )
+
     args = parser.parse_args()
     transcriber_conf = check_config(args)
     print(transcriber_conf)
@@ -67,4 +77,4 @@ if __name__ == '__main__':
         print("Activating wire...")
         main(transcriber_conf)
     except KeyboardInterrupt:
-        sys.exit('\nInterrupted by user')
+        sys.exit("\nInterrupted by user")

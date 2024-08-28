@@ -1,42 +1,43 @@
 import asyncio
 import sys
 
-from transcriber.whisper.custom import CustomWhisper
 from transcriber.whisper.distilled import DistilWhisper
-from transcriber.whisper.stock import StockWhisper
 from transcriber.InputStreamGenerator import InputStreamGenerator
 
 
 def main():
     transcriber_conf = {
-        'model_params': {
-            'model_size': 'small',
-            'device': 'cpu',
+        "model_params": {
+            "model_size": "small",
+            "device": "cpu",
         },
-        'generator_params': {
-            'samplerate': 16000,
-            'blocksize': 4000,
-            'adjustment_time': 5,
-            'memory_safe': True
-        }
+        "generator_params": {
+            "samplerate": 16000,
+            "blocksize": 4000,
+            "adjustment_time": 5,
+            "memory_safe": True,
+        },
     }
-    
+
     # Load inputstream_generator
-    inputstream_generator = InputStreamGenerator(**transcriber_conf['generator_params'])
-    
+    inputstream_generator = InputStreamGenerator(**transcriber_conf["generator_params"])
+
     # Load model
     # when using the FinetunedWhisper class one can specify a different whisper model from huggingface
     # in the transcriber_conf
     # model_size becomes obsolete then
-    asr_model = DistilWhisper(inputstream_generator=inputstream_generator, **transcriber_conf['model_params'])
-    
+    asr_model = DistilWhisper(
+        inputstream_generator=inputstream_generator, **transcriber_conf["model_params"]
+    )
+
     asyncio.run(start(inputstream_generator, asr_model))
-        
+
+
 async def start(inputstream_generator, asr_model):
     # Create a transcribe and inputstream task
     inputstream_task = asyncio.create_task(inputstream_generator.process_audio())
     transcribe_task = asyncio.create_task(asr_model.run_inference())
-    
+
     # Execute the tasks and catch exception
     try:
         await asyncio.gather(inputstream_task, transcribe_task)
@@ -44,9 +45,9 @@ async def start(inputstream_generator, asr_model):
         print("\nTranscribe task cancelled.")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
         print("Activating wire...")
         main()
     except KeyboardInterrupt:
-        sys.exit('\nInterrupted by user')
+        sys.exit("\nInterrupted by user")
