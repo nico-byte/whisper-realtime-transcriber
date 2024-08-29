@@ -6,9 +6,7 @@ try:
     import sounddevice as sd
 except OSError as e:
     print(e)
-    print(
-        "If `GLIBCXX_x.x.x' not found, try installing it with: conda install -c conda-forge libstdcxx-ng=12"
-    )
+    print("If `GLIBCXX_x.x.x' not found, try installing it with: conda install -c conda-forge libstdcxx-ng=12")
     sys.exit()
 
 from utils.decorators import sync_timer
@@ -21,7 +19,7 @@ class InputStreamGenerator:
         samplerate=16000,
         blocksize=4000,
         adjustment_time=5,
-        min_chunks=8,
+        min_chunks=6,
         memory_safe=True,
     ):
         """
@@ -74,15 +72,12 @@ class InputStreamGenerator:
             indata_flattened: np.ndarray = abs(indata.flatten())
 
             # discard buffers that contain mostly silence
-            if (
-                (np.percentile(indata_flattened, 10) <= self.SILENCE_THRESHOLD)
-                and self.global_ndarray is None
-            ) or (self.memory_safe and self.data_ready_event.is_set()):
+            if ((np.percentile(indata_flattened, 10) <= self.SILENCE_THRESHOLD) and self.global_ndarray is None) or (
+                self.memory_safe and self.data_ready_event.is_set()
+            ):
                 continue
             if self.global_ndarray is not None:
-                self.global_ndarray = np.concatenate(
-                    (self.global_ndarray, indata), dtype="int16"
-                )
+                self.global_ndarray = np.concatenate((self.global_ndarray, indata), dtype="int16")
             else:
                 self.global_ndarray = indata
             # concatenate buffers if the end of the current buffer is not silent
@@ -92,9 +87,7 @@ class InputStreamGenerator:
                 continue
             elif len(self.global_ndarray) / self.BLOCKSIZE >= self.min_chunks:
                 self.temp_ndarray = self.global_ndarray.copy()
-                self.temp_ndarray = (
-                    self.temp_ndarray.flatten().astype(np.float32) / 32768.0
-                )
+                self.temp_ndarray = self.temp_ndarray.flatten().astype(np.float32) / 32768.0
 
                 self.global_ndarray = None
                 self.data_ready_event.set()
@@ -116,10 +109,8 @@ class InputStreamGenerator:
             loudness_values.append(np.mean(indata_flattened))
 
             # Stop recording after ADJUSTMENT_TIME seconds
-            if blocks_processed >= self.ADJUSTMENT_TIME * (
-                self.SAMPLERATE / self.BLOCKSIZE
-            ):
+            if blocks_processed >= self.ADJUSTMENT_TIME * (self.SAMPLERATE / self.BLOCKSIZE):
                 self.SILENCE_THRESHOLD = float(np.percentile(loudness_values, 20))
                 break
 
-        print(f"\nSet SILENCE_THRESHOLD to {self.SILENCE_THRESHOLD}\n")
+        print(f"Set SILENCE_THRESHOLD to {self.SILENCE_THRESHOLD}\n")

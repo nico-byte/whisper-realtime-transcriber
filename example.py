@@ -1,48 +1,18 @@
 import asyncio
 import sys
 
-from transcriber.whisper.distilled import DistilWhisper
 from transcriber.InputStreamGenerator import InputStreamGenerator
+from transcriber.WhisperModel import WhisperModel
+from transcriber.RealtimeTranscriber import RealtimeTranscriber
 
 
 def main():
-    transcriber_conf = {
-        "model_params": {
-            "model_size": "small",
-            "device": "cpu",
-        },
-        "generator_params": {
-            "samplerate": 16000,
-            "blocksize": 4000,
-            "adjustment_time": 5,
-            "memory_safe": True,
-        },
-    }
+    inputstream_generator = InputStreamGenerator()
+    asr_model = WhisperModel(inputstream_generator)
+    
+    transcriber = RealtimeTranscriber(inputstream_generator, asr_model)
 
-    # Load inputstream_generator
-    inputstream_generator = InputStreamGenerator(**transcriber_conf["generator_params"])
-
-    # Load model
-    # when using the FinetunedWhisper class one can specify a different whisper model from huggingface
-    # in the transcriber_conf
-    # model_size becomes obsolete then
-    asr_model = DistilWhisper(
-        inputstream_generator=inputstream_generator, **transcriber_conf["model_params"]
-    )
-
-    asyncio.run(start(inputstream_generator, asr_model))
-
-
-async def start(inputstream_generator, asr_model):
-    # Create a transcribe and inputstream task
-    inputstream_task = asyncio.create_task(inputstream_generator.process_audio())
-    transcribe_task = asyncio.create_task(asr_model.run_inference())
-
-    # Execute the tasks and catch exception
-    try:
-        await asyncio.gather(inputstream_task, transcribe_task)
-    except asyncio.CancelledError:
-        print("\nTranscribe task cancelled.")
+    asyncio.run(transcriber.start_event_loop())
 
 
 if __name__ == "__main__":
