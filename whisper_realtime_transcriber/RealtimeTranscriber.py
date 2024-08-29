@@ -1,7 +1,7 @@
 import asyncio
 
-from transcriber.WhisperModel import WhisperModel
-from transcriber.InputStreamGenerator import InputStreamGenerator
+from .WhisperModel import WhisperModel
+from .InputStreamGenerator import InputStreamGenerator
 
 
 class RealtimeTranscriber:

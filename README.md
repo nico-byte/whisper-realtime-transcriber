@@ -59,9 +59,9 @@ After completing the installation process, you can now use the transcriber:
   ```python
   import asyncio
 
-  from transcriber.InputStreamGenerator import InputStreamGenerator
-  from transcriber.WhisperModel import WhisperModel
-  from transcriber.RealtimeTranscriber import RealtimeTranscriber
+  from whisper_realtime_transcriber.InputStreamGenerator import InputStreamGenerator
+  from whisper_realtime_transcriber.WhisperModel import WhisperModel
+  from whisper_realtime_transcriber.RealtimeTranscriber import RealtimeTranscriber
 
   inputstream_generator = InputStreamGenerator()
   asr_model = WhisperModel(inputstream_generator)

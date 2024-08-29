@@ -1,9 +1,9 @@
 import asyncio
 import sys
 
-from transcriber.InputStreamGenerator import InputStreamGenerator
-from transcriber.WhisperModel import WhisperModel
-from transcriber.RealtimeTranscriber import RealtimeTranscriber
+from whisper_realtime_transcriber.InputStreamGenerator import InputStreamGenerator
+from whisper_realtime_transcriber.WhisperModel import WhisperModel
+from whisper_realtime_transcriber.RealtimeTranscriber import RealtimeTranscriber
 
 
 def main():

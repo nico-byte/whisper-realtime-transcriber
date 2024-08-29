@@ -3,11 +3,11 @@ import asyncio
 import time
 import string
 
-from utils.utils import preprocess_text, set_device
+from whisper_realtime_transcriber.utils.utils import preprocess_text, set_device
 from transformers import WhisperProcessor, WhisperForConditionalGeneration
 from transformers import logging
 
-from utils.decorators import sync_timer
+from whisper_realtime_transcriber.utils.decorators import sync_timer
 
 logging.set_verbosity_error()
 

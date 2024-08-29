@@ -9,7 +9,7 @@ except OSError as e:
     print("If `GLIBCXX_x.x.x' not found, try installing it with: conda install -c conda-forge libstdcxx-ng=12")
     sys.exit()
 
-from utils.decorators import sync_timer
+from whisper_realtime_transcriber.utils.decorators import sync_timer
 
 
 class InputStreamGenerator:
