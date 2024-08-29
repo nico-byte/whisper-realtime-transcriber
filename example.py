@@ -9,7 +9,7 @@ from transcriber.RealtimeTranscriber import RealtimeTranscriber
 def main():
     inputstream_generator = InputStreamGenerator()
     asr_model = WhisperModel(inputstream_generator)
-    
+
     transcriber = RealtimeTranscriber(inputstream_generator, asr_model)
 
     asyncio.run(transcriber.start_event_loop())

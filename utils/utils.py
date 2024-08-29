@@ -4,9 +4,7 @@ from punctuators.models import PunctCapSegModelONNX
 from typing import Tuple, List
 
 
-model: PunctCapSegModelONNX = PunctCapSegModelONNX.from_pretrained(
-    "1-800-BAD-CODE/xlm-roberta_punctuation_fullstop_truecase"
-)
+model: PunctCapSegModelONNX = PunctCapSegModelONNX.from_pretrained("1-800-BAD-CODE/xlm-roberta_punctuation_fullstop_truecase")
 
 
 def preprocess_text(inputs: str) -> Tuple[List[str], List[str]]:

@@ -81,9 +81,7 @@ class InputStreamGenerator:
             else:
                 self.global_ndarray = indata
             # concatenate buffers if the end of the current buffer is not silent
-            if (
-                np.percentile(indata_flattened[-100:-1], 10) > self.SILENCE_THRESHOLD
-            ) or self.data_ready_event.is_set():
+            if (np.percentile(indata_flattened[-100:-1], 10) > self.SILENCE_THRESHOLD) or self.data_ready_event.is_set():
                 continue
             elif len(self.global_ndarray) / self.BLOCKSIZE >= self.min_chunks:
                 self.temp_ndarray = self.global_ndarray.copy()

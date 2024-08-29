@@ -14,15 +14,7 @@ logging.set_verbosity_error()
 
 class WhisperModel:
     @sync_timer(print_statement="Loaded distilled whisper model", return_some=False)
-    def __init__(
-        self,
-        inputstream_generator,
-        model_id=None,
-        model_size="small",
-        punctuate_truecase=False,
-        device="cpu",
-        verbose=True
-    ):
+    def __init__(self, inputstream_generator, model_id=None, model_size="small", punctuate_truecase=False, device="cpu", verbose=True):
         """
         :param inputstream_generator: the generator to use for streaming audio
         :param model_size (str): the size of the model to use for inference
@@ -30,13 +22,13 @@ class WhisperModel:
         :param device (str): the device to use for inference
         """
         self._inputstream_generator = inputstream_generator
-        
+
         if model_id is None:
             self.available_model_sizes = ["small", "medium", "large-v3"]
 
             self._model_size = model_size
             self._model_size = "large-v3" if model_size == "large" else self._model_size
-            
+
             if model_size not in self.available_model_sizes:
                 print(f"Model size not supported. Defaulting to {self.model_size}.")
 
@@ -73,7 +65,7 @@ class WhisperModel:
         # Check if generator samplerate matches models samplerate
         if self._inputstream_generator.SAMPLERATE != self._processor.feature_extractor.sampling_rate:
             self._inputstream_generator.SAMPLERATE = self.processor.feature_extractor.sampling_rate
-            
+
         self.verbose = verbose
 
     async def run_inference(self):
@@ -96,18 +88,16 @@ class WhisperModel:
 
             if not self.verbose:
                 continue
-            
+
             if self._punctuate_truecase:
                 await self._print_transcriptions()
             else:
                 await self._print_transcriptions()
                 self._temp_transcript = ""
-            
+
             # Warn the user when real-time factor>1
             if realtime_factor > 1 and not self._inputstream_generator.memory_safe:
-                print(
-                    f"\nTranscription took longer ({transcription_duration:.3f}s) than length of input in seconds ({audio_duration:.3f}s)."
-                )
+                print(f"\nTranscription took longer ({transcription_duration:.3f}s) than length of input in seconds ({audio_duration:.3f}s).")
                 print(
                     f"Real-Time Factor: {realtime_factor:.3f}, try to use a smaller model or increase the min_chunks option in the config file."
                 )
