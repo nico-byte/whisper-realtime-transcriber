@@ -56,32 +56,20 @@ Follow the steps below to set up the project on your local machine:
 
 After completing the installation process, you can now use the transcriber:
 
-- First let's look at the [transcriber_config.yaml](./transcriber_config.yaml) file. This file contains all the necessary information for the generator and models of the transcriber to run.
-  ```yaml
-  model_params:
-    model_size: 'small'   # 'small', 'medium', 'large' - obsolete when using a custom model_id
-    device: 'cpu'         # 'cuda', 'mps', 'cpu'
-    punctuate_truecase: False  # whether to punctuate/truecas the model output or not because in partial trnascriptions these might be worng
-  generator_params:
-    samplerate: 16000     # samplerate of the audio input, anything you like
-    blocksize: 4000       # the size of the blocks that are processed by the generator at once, anything you like
-                          # -> 4000 is the best value i found
-    adjustment_time: 5    # duration in seconds for adjusting the silence threshold
-    min_chunks: 6         # of how many chunks an audio snippet need to consist, before it will be forwarded to the model
-    memory_safe: True     # if True, the generator will discard all buffers that are generated during model inference 
-                          # -> set to True if your device is not fast enough to keep up with the generator
+  ```python
+  import asyncio
+
+  from transcriber.InputStreamGenerator import InputStreamGenerator
+  from transcriber.WhisperModel import WhisperModel
+  from transcriber.RealtimeTranscriber import RealtimeTranscriber
+
+  inputstream_generator = InputStreamGenerator()
+  asr_model = WhisperModel(inputstream_generator)
+
+  transcriber = RealtimeTranscriber(inputstream_generator, asr_model)
+
+  asyncio.run(transcriber.start_event_loop())
   ```
-
-- Of course another file can be used to configure the transcriber. The default one is [transcriber_config.yaml](./transcriber_config.yaml).
-
-- One can now use the transcriber like this:
-  ```bash
-  python -m transcriber --transcriber_conf=transcriber_config.yaml
-  ```
-
-- The `trascriber_conf` argument can be ignored unless another one is used!
-
-- The [example.py](./example.py) is another example of how to use the transcriber.
 
 Feel free to reach out if you encounter any issues or have questions!
 
