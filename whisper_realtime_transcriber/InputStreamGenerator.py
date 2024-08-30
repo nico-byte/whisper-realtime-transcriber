@@ -38,8 +38,10 @@ class InputStreamGenerator:
         The samplerate of the generated audio data.
     temp_ndarray : np.ndarray
         Where the generated audio data is stored.
-    data_read_event : asyncio.Event
+    data_ready_event : asyncio.Event
         Boolean to tell the InputStreamGenerator, that the asr model is busy or not.
+    memory_safe: bool
+        If True, InputStreamGenerator will pause the collection of audio data during model inference.
     verbose : bool
         Where the boolean to decide to print the model outputs is stored.
 
@@ -63,7 +65,7 @@ class InputStreamGenerator:
         self._blocksize = blocksize
         self._adjustment_time = adjustment_time
         self._min_chunks = min_chunks
-        self._memory_safe = memory_safe
+        self.memory_safe = memory_safe
         self.verbose = verbose
 
         self._global_ndarray: np.ndarray = None
@@ -106,7 +108,7 @@ class InputStreamGenerator:
 
             # discard buffers that contain mostly silence
             if ((np.percentile(indata_flattened, 10) <= self._silence_threshold) and self._global_ndarray is None) or (
-                self._memory_safe and self.data_ready_event.is_set()
+                self.memory_safe and self.data_ready_event.is_set()
             ):
                 continue
             if self._global_ndarray is not None:

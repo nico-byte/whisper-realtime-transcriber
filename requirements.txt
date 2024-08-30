@@ -114,7 +114,7 @@ sympy==1.13.2
     #   torch
 tokenizers==0.19.1
     # via transformers
-torch==2.1.1
+torch==2.4.0
     # via
     #   -r requirements.in
     #   accelerate
