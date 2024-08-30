@@ -79,11 +79,10 @@ Feel free to reach out if you encounter any issues or have questions!
 - The implementation of the Inputstream Generator is based on this [implemantation](https://github.com/tobiashuttinger/openai-whisper-realtime).
 - The Inputstream Generator reads the microphone input and passes it to the Whisper Model. The Whisper Model then generates the transcription.
 - This is happening in an async event loop so that the Whsiper Model can continuously generate transcriptions from the provided audio input, generated and processed by the Inputstream Generator.
-- On a machine with a 12GB Nvidia RTX 3060 the [distilled large-v3](https://github.com/huggingface/distil-whisper) model runs at a realtime-factor of about 0.4, this means 10s of audio input get transcribed in 4s, by only utilizing around 1.8GB of VRAM.
+- On a machine with a 12GB Nvidia RTX 3060 the [distilled large-v3](https://github.com/huggingface/distil-whisper) model runs at a realtime-factor of about 0.4, this means 10s of audio input get transcribed in 4s - the longer the input the bigger is the realtime-factor.
 
 ## ToDos
 
-- Add webinterface for convenience.
-  - I'v tried a few frameworks like Gradio or DearPyGui, but i find it tedious to work with them so this is not a priority.
+- Add functionality to transcribe and actually do something with the outputs.
 - Add functionality to transcribe from audio files.
 - Get somehow rid of the hallucinations of the whisper models when no voice is active.
