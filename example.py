@@ -8,7 +8,7 @@ from whisper_realtime_transcriber.RealtimeTranscriber import RealtimeTranscriber
 
 def main():
     inputstream_generator = InputStreamGenerator()
-    asr_model = WhisperModel(inputstream_generator, device="mps")
+    asr_model = WhisperModel(inputstream_generator)
 
     transcriber = RealtimeTranscriber(inputstream_generator, asr_model)
 
