@@ -1,6 +1,7 @@
 import numpy as np
 import asyncio
 import sys
+import typing as t
 
 try:
     import sounddevice as sd
@@ -13,32 +14,64 @@ from whisper_realtime_transcriber.utils.decorators import sync_timer
 
 
 class InputStreamGenerator:
-    @sync_timer(print_statement="Loaded inputstream generator", return_some=False)
+    """
+    Loading and using the InputStreamGenerator.
+
+    Parameters
+    ----------
+    samplerate : int
+        The specified samplerate of the audio data. (default is 16000)
+    blocksize : int
+        The size of each individual audio chunk. (default is 4000)
+    adjustment_time : int
+        The adjustment_time for setting the silence threshold. (default is 5)
+    min_chinks : int
+        The minimum number of chunks to be generated, before feeding it into the asr model. (default is 6)
+    memory_safe: bool
+        Whether to pause the generation audio data during the inference of the asr model or not. (default is True)
+    verbose : bool
+        Whether to print the additional information to the console or not. (default is True)
+
+    Attributes
+    ----------
+    samplerate : int
+        The samplerate of the generated audio data.
+    temp_ndarray : np.ndarray
+        Where the generated audio data is stored.
+    data_read_event : asyncio.Event
+        Boolean to tell the InputStreamGenerator, that the asr model is busy or not.
+    verbose : bool
+        Where the boolean to decide to print the model outputs is stored.
+
+    Methods
+    -------
+    process_audio()
+        Processes the incoming audio data.
+    """
+
+    # @sync_timer(print_statement="Loaded inputstream generator", return_some=False)
     def __init__(
         self,
-        samplerate=16000,
-        blocksize=4000,
-        adjustment_time=5,
-        min_chunks=6,
-        memory_safe=True,
+        samplerate: int = 16000,
+        blocksize: int = 4000,
+        adjustment_time: int = 5,
+        min_chunks: int = 6,
+        memory_safe: bool = True,
+        verbose: bool = True,
     ):
-        """
-        :param samplerate (int): the samplerate to use for the audio input
-        :param blocksize (int): the blocksize to use for the audio input
-        :param adjustment_time (int): the time to wait for adjusting the silence_threshold
-        """
-        self.SAMPLERATE = samplerate
-        self.BLOCKSIZE = blocksize
-        self.ADJUSTMENT_TIME = adjustment_time
-        self.min_chunks = min_chunks
-        self.memory_safe = memory_safe
+        self.samplerate = samplerate
+        self._blocksize = blocksize
+        self._adjustment_time = adjustment_time
+        self._min_chunks = min_chunks
+        self._memory_safe = memory_safe
+        self.verbose = verbose
 
-        self.global_ndarray: np.ndarray = None
+        self._global_ndarray: np.ndarray = None
         self.temp_ndarray: np.ndarray = None
 
         self.data_ready_event = asyncio.Event()
 
-    async def _generate(self):
+    async def _generate(self) -> t.AsyncGenerator:
         """
         Generate audio chunks of size of the blocksize and yield them.
         """
@@ -49,10 +82,10 @@ class InputStreamGenerator:
             loop.call_soon_threadsafe(q_in.put_nowait, (in_data.copy(), state))
 
         stream = sd.InputStream(
-            samplerate=self.SAMPLERATE,
+            samplerate=self.samplerate,
             channels=1,
             dtype="int16",
-            blocksize=self.BLOCKSIZE,
+            blocksize=self._blocksize,
             callback=callback,
         )
         with stream:
@@ -60,7 +93,7 @@ class InputStreamGenerator:
                 indata, status = await q_in.get()
                 yield indata, status
 
-    async def process_audio(self):
+    async def process_audio(self) -> None:
         """
         Process the audio chunks and store them for the transcriber.
         """
@@ -72,27 +105,27 @@ class InputStreamGenerator:
             indata_flattened: np.ndarray = abs(indata.flatten())
 
             # discard buffers that contain mostly silence
-            if ((np.percentile(indata_flattened, 10) <= self.SILENCE_THRESHOLD) and self.global_ndarray is None) or (
-                self.memory_safe and self.data_ready_event.is_set()
+            if ((np.percentile(indata_flattened, 10) <= self._silence_threshold) and self._global_ndarray is None) or (
+                self._memory_safe and self.data_ready_event.is_set()
             ):
                 continue
-            if self.global_ndarray is not None:
-                self.global_ndarray = np.concatenate((self.global_ndarray, indata), dtype="int16")
+            if self._global_ndarray is not None:
+                self._global_ndarray = np.concatenate((self._global_ndarray, indata), dtype="int16")
             else:
-                self.global_ndarray = indata
+                self._global_ndarray = indata
             # concatenate buffers if the end of the current buffer is not silent
-            if (np.percentile(indata_flattened[-100:-1], 10) > self.SILENCE_THRESHOLD) or self.data_ready_event.is_set():
+            if (np.percentile(indata_flattened[-100:-1], 10) > self._silence_threshold) or self.data_ready_event.is_set():
                 continue
-            elif len(self.global_ndarray) / self.BLOCKSIZE >= self.min_chunks:
-                self.temp_ndarray = self.global_ndarray.copy()
+            elif len(self._global_ndarray) / self._blocksize >= self._min_chunks:
+                self.temp_ndarray = self._global_ndarray.copy()
                 self.temp_ndarray = self.temp_ndarray.flatten().astype(np.float32) / 32768.0
 
-                self.global_ndarray = None
+                self._global_ndarray = None
                 self.data_ready_event.set()
             else:
                 continue
 
-    async def _set_silence_threshold(self):
+    async def _set_silence_threshold(self) -> None:
         """
         Automatically adjust the silence threshold based on the 20th percentile of the loudness of the input.
         """
@@ -107,8 +140,9 @@ class InputStreamGenerator:
             loudness_values.append(np.mean(indata_flattened))
 
             # Stop recording after ADJUSTMENT_TIME seconds
-            if blocks_processed >= self.ADJUSTMENT_TIME * (self.SAMPLERATE / self.BLOCKSIZE):
-                self.SILENCE_THRESHOLD = float(np.percentile(loudness_values, 20))
+            if blocks_processed >= self._adjustment_time * (self.samplerate / self._blocksize):
+                self._silence_threshold = float(np.percentile(loudness_values, 20))
                 break
 
-        print(f"Set SILENCE_THRESHOLD to {self.SILENCE_THRESHOLD}\n")
+        if self.verbose:
+            print(f"Set SILENCE_THRESHOLD to {self._silence_threshold}\n")

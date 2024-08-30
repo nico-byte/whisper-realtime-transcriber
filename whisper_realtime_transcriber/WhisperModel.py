@@ -2,10 +2,13 @@ import torch
 import asyncio
 import time
 import string
+import typing as t
 
 from whisper_realtime_transcriber.utils.utils import preprocess_text, set_device
+from whisper_realtime_transcriber.InputStreamGenerator import InputStreamGenerator
 from transformers import WhisperProcessor, WhisperForConditionalGeneration
 from transformers import logging
+from punctuators.models import PunctCapSegModelONNX
 
 from whisper_realtime_transcriber.utils.decorators import sync_timer
 
@@ -13,16 +16,78 @@ logging.set_verbosity_error()
 
 
 class WhisperModel:
-    @sync_timer(print_statement="Loaded distilled whisper model", return_some=False)
-    def __init__(self, inputstream_generator, model_id=None, model_size="small", punctuate_truecase=False, device="cpu", verbose=True):
-        """
-        :param inputstream_generator: the generator to use for streaming audio
-        :param model_size (str): the size of the model to use for inference
-        :param language (str): the language to use for tokenizing the model output
-        :param device (str): the device to use for inference
-        """
+    """
+    Loading and using the specified whisper model.
+
+    Parameters
+    ----------
+    inputstream_generator : InputStreamGenerator
+        The generator to be used for streaming audio.
+    model_id : Optional[str]
+        The model id to be used for loading the model. (default is None)
+    model_size : str
+        The size of the model to be used for inference. (default is "small")
+    punctuate_truecase : bool
+        Whether to process the outputs of the model or not. (default is False)
+    device : str
+        The device to be used for inference. (default is "cpu")
+    verbose : bool
+        Whether to print the model outputs to the console or not. (default is True)
+
+    Attributes
+    ----------
+    transcription : str
+        Where the (processed) model outputs are stored.
+    verbose : bool
+        Where the boolean to decide to print the model outputs is stored.
+
+    Methods
+    -------
+    run_inference()
+        Runs the inference of the model.
+    """
+
+    # @sync_timer(print_statement="Loaded distilled whisper model", return_some=False)
+    def __init__(
+        self,
+        inputstream_generator: InputStreamGenerator,
+        model_id: t.Optional[str] = None,
+        model_size: str = "small",
+        punctuate_truecase: bool = False,
+        device: str = "cpu",
+        verbose: bool = True,
+    ):
         self._inputstream_generator = inputstream_generator
 
+        self._device = set_device(device)
+
+        self._torch_dtype = torch.float16 if self._device == torch.device("cuda") else torch.float32
+        if self._device == torch.device("cuda"):
+            torch.backends.cuda.matmul.allow_tf32
+
+        self._load_model(model_size, model_id)
+
+        self._temp_transcript: str = ""
+        self.transcription: str = ""
+        self._partial_transcript: str = ""
+
+        self._punctuate_truecase = punctuate_truecase
+
+        if punctuate_truecase:
+            self._punct_model = PunctCapSegModelONNX.from_pretrained("1-800-BAD-CODE/xlm-roberta_punctuation_fullstop_truecase")
+
+        self._remove_punct_map = {ord(char): None for char in string.punctuation if char not in ["ä", "ö", "ü", "ß"]}
+
+        # Check if generator samplerate matches models samplerate
+        if self._inputstream_generator.samplerate != self._processor.feature_extractor.sampling_rate:
+            self._inputstream_generator.samplerate = self.processor.feature_extractor.sampling_rate
+
+        self.verbose = verbose
+
+    def _load_model(self, model_size: str, model_id: t.Optional[str]) -> None:
+        """
+        Loads the specified model.
+        """
         if model_id is None:
             self.available_model_sizes = ["small", "medium", "large-v3"]
 
@@ -40,19 +105,6 @@ class WhisperModel:
         else:
             self._model_id = model_id
 
-        self._device = set_device(device)
-
-        self._torch_dtype = torch.float16 if self._device == torch.device("cuda") else torch.float32
-        if self._device == torch.device("cuda"):
-            torch.backends.cuda.matmul.allow_tf32
-
-        self._temp_transcript: str = ""
-        self.transcription: str = ""
-        self._partial_transcript: str = ""
-
-        self._punctuate_truecase = punctuate_truecase
-        self._remove_punct_map = {ord(char): None for char in string.punctuation if char not in ["ä", "ö", "ü", "ß"]}
-
         self._speech_model = WhisperForConditionalGeneration.from_pretrained(
             self._model_id,
             torch_dtype=self._torch_dtype,
@@ -62,13 +114,7 @@ class WhisperModel:
 
         self._processor = WhisperProcessor.from_pretrained(self._model_id)
 
-        # Check if generator samplerate matches models samplerate
-        if self._inputstream_generator.SAMPLERATE != self._processor.feature_extractor.sampling_rate:
-            self._inputstream_generator.SAMPLERATE = self.processor.feature_extractor.sampling_rate
-
-        self.verbose = verbose
-
-    async def run_inference(self):
+    async def run_inference(self) -> None:
         """
         Main logic for calling an inference run, computing the real-time factor and printing the transcription.
         """
@@ -79,7 +125,7 @@ class WhisperModel:
             await self._transcribe()
 
             # Compute the duration of the audio input and comparing it to the duration of inference.
-            audio_duration = len(self._inputstream_generator.temp_ndarray) / self._inputstream_generator.SAMPLERATE
+            audio_duration = len(self._inputstream_generator.temp_ndarray) / self._inputstream_generator.samplerate
 
             self._inputstream_generator.data_ready_event.clear()
 
@@ -102,7 +148,7 @@ class WhisperModel:
                     f"Real-Time Factor: {realtime_factor:.3f}, try to use a smaller model or increase the min_chunks option in the config file."
                 )
 
-    async def _transcribe(self):
+    async def _transcribe(self) -> None:
         """
         Main logic for running the actual inference on the models.
         """
@@ -111,7 +157,7 @@ class WhisperModel:
 
         inputs = self._processor(
             waveform,
-            sampling_rate=self._inputstream_generator.SAMPLERATE,
+            sampling_rate=self._inputstream_generator.samplerate,
             return_tensors="pt",
         )
         inputs = inputs.to(self._device, dtype=self._torch_dtype)
@@ -135,17 +181,21 @@ class WhisperModel:
         )
 
         self._temp_transcript += transcript[0]
-        await asyncio.to_thread(self._strip_transcript)
+
         if self._punctuate_truecase:
-            self.transcription, self._partial_transcript = await asyncio.to_thread(preprocess_text, self._temp_transcript)
+            await asyncio.to_thread(self._strip_transcript)
+            self.transcription, self._partial_transcript = await asyncio.to_thread(preprocess_text, self._punct_model, self._temp_transcript)
             self._temp_transcript = self._partial_transcript
 
-    def _strip_transcript(self):
+    def _strip_transcript(self) -> None:
+        """
+        Removes punctuation and lowers all characters.
+        """
         self._temp_transcript = self._temp_transcript.lower()
         self._temp_transript = self._temp_transcript.translate(self._remove_punct_map).strip()
         self._temp_transcript = self._temp_transcript.replace(".", "")
 
-    async def _print_transcriptions(self):
+    async def _print_transcriptions(self) -> None:
         """
         Prints the model trasncription.
         """
