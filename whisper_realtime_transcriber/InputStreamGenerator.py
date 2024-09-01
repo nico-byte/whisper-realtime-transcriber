@@ -9,7 +9,7 @@ except OSError as e:
     print(e)
     print("If `GLIBCXX_x.x.x' not found, try installing it with: conda install -c conda-forge libstdcxx-ng=12")
     sys.exit()
-    
+
 
 class InputStreamGenerator:
     """
@@ -71,11 +71,11 @@ class InputStreamGenerator:
 
         self._global_ndarray: np.ndarray = None
         self.temp_ndarray: np.ndarray = None
-        
+
         self._silence_threshold = None
 
         self.data_ready_event = asyncio.Event()
-        
+
     async def _generate(self) -> t.AsyncGenerator:
         """
         Generate audio chunks of size of the blocksize and yield them.
@@ -104,7 +104,7 @@ class InputStreamGenerator:
         """
         if self._silence_threshold is None:
             await self._set_silence_threshold()
-        
+
         print("Listening...")
 
         async for indata, _ in self._generate():
@@ -132,7 +132,7 @@ class InputStreamGenerator:
                     return None
             else:
                 continue
-        
+
     async def _set_silence_threshold(self) -> None:
         """
         Automatically adjust the silence threshold based on the 20th percentile of the loudness of the input.

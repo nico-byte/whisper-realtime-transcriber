@@ -36,15 +36,22 @@ class RealtimeTranscriber:
         Starting the event loop responsible for realtime transcribing.
     """
 
-    def __init__(self, inputstream_generator: InputStreamGenerator, asr_model: WhisperModel, continuous: bool = True, verbose: bool = True, func: t.Callable = print):
+    def __init__(
+        self,
+        inputstream_generator: InputStreamGenerator,
+        asr_model: WhisperModel,
+        continuous: bool = True,
+        verbose: bool = True,
+        func: t.Callable = print,
+    ):
         self._inputstream_generator = inputstream_generator
         self._asr_model = asr_model
-        
+
         self._inputstream_generator.verbose, self._asr_model.verbose = verbose, verbose
         self._inputstream_generator.continuous, self._asr_model.continuous = continuous, continuous
-        
+
         self.func = func
-        
+
     def create_tasks(self) -> t.Tuple[t.AsyncGenerator, t.AsyncGenerator]:
         inputstream_task = asyncio.create_task(self._inputstream_generator.process_audio())
         transcribe_task = asyncio.create_task(self._asr_model.run_inference())
@@ -53,12 +60,12 @@ class RealtimeTranscriber:
     async def execute_event_loop(self) -> None:
         while True:
             inputstream_task, transcribe_task = self.create_tasks()
-            
+
             # Execute the tasks and catch exceptions
             try:
                 _, transcription = await asyncio.gather(inputstream_task, transcribe_task)
                 self.func(transcription)
-            
+
             except asyncio.CancelledError:
                 print("\nTranscribe task cancelled.")
                 inputstream_task.cancel()
@@ -66,14 +73,14 @@ class RealtimeTranscriber:
 
                 await asyncio.gather(inputstream_task, transcribe_task, return_exceptions=True)
                 break
-            
+
             except KeyboardInterrupt:
                 sys.exit("\nInterrupted by user")
-            
+
             except Exception as e:
                 print(f"An error occurred: {e}")
                 break
-        
+
             finally:
                 inputstream_task.cancel()
                 transcribe_task.cancel()

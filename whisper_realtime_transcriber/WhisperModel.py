@@ -57,7 +57,7 @@ class WhisperModel:
         self._inputstream_generator = inputstream_generator
 
         self.continuous = continuous
-        
+
         self._device = set_device(device)
 
         self._torch_dtype = torch.float16 if self._device == torch.device("cuda") else torch.float32
@@ -113,7 +113,7 @@ class WhisperModel:
             start_time = time.perf_counter()
 
             await self._transcribe()
-            
+
             if not self.continuous:
                 self._inputstream_generator.data_ready_event.clear()
                 return self.transcription
@@ -125,7 +125,7 @@ class WhisperModel:
 
             transcription_duration = time.perf_counter() - start_time
             realtime_factor = transcription_duration / audio_duration
-            
+
             if not self.verbose:
                 continue
 

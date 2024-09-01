@@ -5,6 +5,7 @@ from whisper_realtime_transcriber.InputStreamGenerator import InputStreamGenerat
 from whisper_realtime_transcriber.WhisperModel import WhisperModel
 from whisper_realtime_transcriber.RealtimeTranscriber import RealtimeTranscriber
 
+
 def print_transcription(some_transcription):
     print(some_transcription)
 
@@ -14,7 +15,7 @@ def main():
     asr_model = WhisperModel(inputstream_generator)
 
     transcriber = RealtimeTranscriber(inputstream_generator, asr_model, continuous=False, func=print_transcription)
-    
+
     asyncio.run(transcriber.execute_event_loop())
 
 
