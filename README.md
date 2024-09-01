@@ -63,12 +63,28 @@ After completing the installation process, you can now use the transcriber:
   from whisper_realtime_transcriber.WhisperModel import WhisperModel
   from whisper_realtime_transcriber.RealtimeTranscriber import RealtimeTranscriber
 
+  # Standard way - all outputs get printed directly to the console.
   inputstream_generator = InputStreamGenerator()
   asr_model = WhisperModel(inputstream_generator)
 
   transcriber = RealtimeTranscriber(inputstream_generator, asr_model)
 
-  asyncio.run(transcriber.start_event_loop())
+  asyncio.run(transcriber.execute_event_loop())
+  ```
+
+  ```python
+  # Executing a custom function inside the RealtimeTranscriber.
+  def print_transcription(some_transcription):
+    print(some_transcription)
+  
+  inputstream_generator = InputStreamGenerator()
+  asr_model = WhisperModel(inputstream_generator)
+
+  # specifying a function and setting continuous to False will allow one
+  # to execute a custom function during the event loop, that is doing something with the transcriptions
+  transcriber = RealtimeTranscriber(inputstream_generator, asr_model, continuous=False, func=print_transcription)
+    
+  asyncio.run(transcriber.execute_event_loop())
   ```
 
 Feel free to reach out if you encounter any issues or have questions!

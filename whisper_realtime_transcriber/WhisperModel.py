@@ -1,16 +1,12 @@
 import torch
 import asyncio
 import time
-import string
 import typing as t
 
-from whisper_realtime_transcriber.utils.utils import preprocess_text, set_device
+from whisper_realtime_transcriber.utils.utils import set_device
 from whisper_realtime_transcriber.InputStreamGenerator import InputStreamGenerator
 from transformers import WhisperProcessor, WhisperForConditionalGeneration
 from transformers import logging
-from punctuators.models import PunctCapSegModelONNX
-
-from whisper_realtime_transcriber.utils.decorators import sync_timer
 
 logging.set_verbosity_error()
 
@@ -31,6 +27,8 @@ class WhisperModel:
         Whether to process the outputs of the model or not. (default is False)
     device : str
         The device to be used for inference. (default is "cpu")
+    continuous : bool
+        Whether to generate audio data conituously or not. (default is True)
     verbose : bool
         Whether to print the model outputs to the console or not. (default is True)
 
@@ -47,18 +45,19 @@ class WhisperModel:
         Runs the inference of the model.
     """
 
-    # @sync_timer(print_statement="Loaded distilled whisper model", return_some=False)
     def __init__(
         self,
         inputstream_generator: InputStreamGenerator,
         model_id: t.Optional[str] = None,
         model_size: str = "small",
-        punctuate_truecase: bool = False,
         device: str = "cpu",
+        continuous: bool = True,
         verbose: bool = True,
     ):
         self._inputstream_generator = inputstream_generator
 
+        self.continuous = continuous
+        
         self._device = set_device(device)
 
         self._torch_dtype = torch.float16 if self._device == torch.device("cuda") else torch.float32
@@ -67,16 +66,7 @@ class WhisperModel:
 
         self._load_model(model_size, model_id)
 
-        self._temp_transcript: str = ""
         self.transcription: str = ""
-        self._partial_transcript: str = ""
-
-        self._punctuate_truecase = punctuate_truecase
-
-        if punctuate_truecase:
-            self._punct_model = PunctCapSegModelONNX.from_pretrained("1-800-BAD-CODE/xlm-roberta_punctuation_fullstop_truecase")
-
-        self._remove_punct_map = {ord(char): None for char in string.punctuation if char not in ["ä", "ö", "ü", "ß"]}
 
         # Check if generator samplerate matches models samplerate
         if self._inputstream_generator.samplerate != self._processor.feature_extractor.sampling_rate:
@@ -114,7 +104,7 @@ class WhisperModel:
 
         self._processor = WhisperProcessor.from_pretrained(self._model_id)
 
-    async def run_inference(self) -> None:
+    async def run_inference(self) -> str:
         """
         Main logic for calling an inference run, computing the real-time factor and printing the transcription.
         """
@@ -123,6 +113,10 @@ class WhisperModel:
             start_time = time.perf_counter()
 
             await self._transcribe()
+            
+            if not self.continuous:
+                self._inputstream_generator.data_ready_event.clear()
+                return self.transcription
 
             # Compute the duration of the audio input and comparing it to the duration of inference.
             audio_duration = len(self._inputstream_generator.temp_ndarray) / self._inputstream_generator.samplerate
@@ -131,15 +125,11 @@ class WhisperModel:
 
             transcription_duration = time.perf_counter() - start_time
             realtime_factor = transcription_duration / audio_duration
-
+            
             if not self.verbose:
                 continue
 
-            if self._punctuate_truecase:
-                await self._print_transcriptions()
-            else:
-                await self._print_transcriptions()
-                self._temp_transcript = ""
+            await self._print_transcriptions()
 
             # Warn the user when real-time factor>1
             if realtime_factor > 1 and not self._inputstream_generator.memory_safe:
@@ -180,26 +170,13 @@ class WhisperModel:
             decode_with_timestamps=False,
         )
 
-        self._temp_transcript += transcript[0]
-
-        if self._punctuate_truecase:
-            await asyncio.to_thread(self._strip_transcript)
-            self.transcription, self._partial_transcript = await asyncio.to_thread(preprocess_text, self._punct_model, self._temp_transcript)
-            self._temp_transcript = self._partial_transcript
-
-    def _strip_transcript(self) -> None:
-        """
-        Removes punctuation and lowers all characters.
-        """
-        self._temp_transcript = self._temp_transcript.lower()
-        self._temp_transript = self._temp_transcript.translate(self._remove_punct_map).strip()
-        self._temp_transcript = self._temp_transcript.replace(".", "")
+        self.transcription = transcript[0]
 
     async def _print_transcriptions(self) -> None:
         """
         Prints the model trasncription.
         """
-        output = self.transcription if self._punctuate_truecase else self._temp_transcript
+        output = self.transcription
 
         char_limit: int = 77  # The character limit after which a new line should start
         current_line_length: int = 0  # Current length of the line being printed

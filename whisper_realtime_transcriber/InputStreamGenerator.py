@@ -9,9 +9,7 @@ except OSError as e:
     print(e)
     print("If `GLIBCXX_x.x.x' not found, try installing it with: conda install -c conda-forge libstdcxx-ng=12")
     sys.exit()
-
-from whisper_realtime_transcriber.utils.decorators import sync_timer
-
+    
 
 class InputStreamGenerator:
     """
@@ -25,8 +23,10 @@ class InputStreamGenerator:
         The size of each individual audio chunk. (default is 4000)
     adjustment_time : int
         The adjustment_time for setting the silence threshold. (default is 5)
-    min_chinks : int
+    min_chunks : int
         The minimum number of chunks to be generated, before feeding it into the asr model. (default is 6)
+    continuous : bool
+        Whether to generate audio data conituously or not. (default is True)
     memory_safe: bool
         Whether to pause the generation audio data during the inference of the asr model or not. (default is True)
     verbose : bool
@@ -51,13 +51,13 @@ class InputStreamGenerator:
         Processes the incoming audio data.
     """
 
-    # @sync_timer(print_statement="Loaded inputstream generator", return_some=False)
     def __init__(
         self,
         samplerate: int = 16000,
         blocksize: int = 4000,
         adjustment_time: int = 5,
         min_chunks: int = 6,
+        continuous: bool = True,
         memory_safe: bool = True,
         verbose: bool = True,
     ):
@@ -65,14 +65,17 @@ class InputStreamGenerator:
         self._blocksize = blocksize
         self._adjustment_time = adjustment_time
         self._min_chunks = min_chunks
+        self.continuous = continuous
         self.memory_safe = memory_safe
         self.verbose = verbose
 
         self._global_ndarray: np.ndarray = None
         self.temp_ndarray: np.ndarray = None
+        
+        self._silence_threshold = None
 
         self.data_ready_event = asyncio.Event()
-
+        
     async def _generate(self) -> t.AsyncGenerator:
         """
         Generate audio chunks of size of the blocksize and yield them.
@@ -99,8 +102,9 @@ class InputStreamGenerator:
         """
         Process the audio chunks and store them for the transcriber.
         """
-        await self._set_silence_threshold()
-
+        if self._silence_threshold is None:
+            await self._set_silence_threshold()
+        
         print("Listening...")
 
         async for indata, _ in self._generate():
@@ -124,9 +128,11 @@ class InputStreamGenerator:
 
                 self._global_ndarray = None
                 self.data_ready_event.set()
+                if not self.continuous:
+                    return None
             else:
                 continue
-
+        
     async def _set_silence_threshold(self) -> None:
         """
         Automatically adjust the silence threshold based on the 20th percentile of the loudness of the input.
