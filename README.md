@@ -99,6 +99,5 @@ Feel free to reach out if you encounter any issues or have questions!
 
 ## ToDos
 
-- Add functionality to transcribe and actually do something with the outputs.
 - Add functionality to transcribe from audio files.
 - Get somehow rid of the hallucinations of the whisper models when no voice is active.
