@@ -57,12 +57,15 @@ Follow the steps below to set up the project on your local machine:
 After completing the installation process, you can now use the transcriber:
 
   ```python
+  # Necessary imports
   import asyncio
 
   from whisper_realtime_transcriber.InputStreamGenerator import InputStreamGenerator
   from whisper_realtime_transcriber.WhisperModel import WhisperModel
   from whisper_realtime_transcriber.RealtimeTranscriber import RealtimeTranscriber
+  ```
 
+  ```python
   # Standard way - all outputs get printed directly to the console.
   inputstream_generator = InputStreamGenerator()
   asr_model = WhisperModel(inputstream_generator)
