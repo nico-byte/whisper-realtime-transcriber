@@ -7,7 +7,4 @@ sounddevice
 ffmpeg-python
 transformers
 asyncio
-nltk
-num2words
 accelerate
-punctuators
