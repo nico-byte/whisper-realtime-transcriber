@@ -20,13 +20,11 @@ class WhisperModel:
     inputstream_generator : InputStreamGenerator
         The generator to be used for streaming audio.
     model_id : Optional[str]
-        The model id to be used for loading the model. (default is None)
+        The model id to be used for loading the model. (any whisper model from huggingface - default is None)
     model_size : str
-        The size of the model to be used for inference. (default is "small")
-    punctuate_truecase : bool
-        Whether to process the outputs of the model or not. (default is False)
+        The size of the model to be used for inference. ("small", "medium", "large-v3" - default is "small")
     device : str
-        The device to be used for inference. (default is "cpu")
+        The device to be used for inference. ("cpu", "cuda", "mps" - default is "cpu")
     continuous : bool
         Whether to generate audio data conituously or not. (default is True)
     verbose : bool
@@ -36,6 +34,8 @@ class WhisperModel:
     ----------
     transcription : str
         Where the (processed) model outputs are stored.
+    continuous : bool
+        Where the boolean to decide if the WhisperModel runs continuously.
     verbose : bool
         Where the boolean to decide to print the model outputs is stored.
 
@@ -75,9 +75,6 @@ class WhisperModel:
         self.verbose = verbose
 
     def _load_model(self, model_size: str, model_id: t.Optional[str]) -> None:
-        """
-        Loads the specified model.
-        """
         if model_id is None:
             self.available_model_sizes = ["small", "medium", "large-v3"]
 
@@ -106,7 +103,42 @@ class WhisperModel:
 
     async def run_inference(self) -> str:
         """
-        Main logic for calling an inference run, computing the real-time factor and printing the transcription.
+        Runs the speech recognition inference in a loop, processing audio input as it becomes available.
+
+        This method continuously monitors an event (`data_ready_event`) to determine when audio data is ready for
+        transcription. Once the data is ready, it performs the transcription using the `_transcribe` method and
+        computes performance metrics, including the real-time factor (RTF).
+
+        Workflow:
+            1. **Wait for Data**: The method waits until the `data_ready_event` is set, indicating that audio data is
+               ready for processing.
+
+            2. **Start Timer**: The method records the start time to measure the duration of the transcription process.
+
+            3. **Transcription**: It calls the `_transcribe()` method to perform the actual speech recognition.
+
+            4. **Check Continuous Mode**: If `self.continuous` is `False`, the method clears the `data_ready_event`
+               and returns the transcription result. This means the loop exits after the first transcription.
+
+            5. **Compute Metrics**:
+                - **Audio Duration**: Calculates the duration of the audio input using the length of the audio data
+                  and the sample rate.
+                - **Transcription Duration**: Measures how long the transcription took.
+                - **Real-Time Factor (RTF)**: The ratio of transcription time to audio duration. An RTF > 1 indicates
+                  that the transcription took longer than the audio duration.
+
+            6. **Clear Event**: Clears the `data_ready_event` after processing the data to prepare for the next round of input.
+
+            7. **Verbose Output**: If `self.verbose` is `True`, it prints the transcription results using
+               `_print_transcriptions()`.
+
+            8. **Real-Time Factor Warning**: If the RTF > 1 and the system is not in a memory-safe mode, it warns the user
+               that transcription took longer than the length of the audio input and suggests using a smaller model or
+               adjusting configuration settings.
+
+        Returns:
+            str: The transcription result if `self.continuous` is `False`. In continuous mode, this method does not return
+            until the loop is broken externally.
         """
         while True:
             await self._inputstream_generator.data_ready_event.wait()

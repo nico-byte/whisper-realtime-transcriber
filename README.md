@@ -2,7 +2,7 @@
 
 ## Overview
 
-This repository contains the source code of a realtime transcriber for various [whisper](https://github.com/openai/whisper) models, published on [huggingface](https://github.com/huggingface/transformers).
+This [repository](https://github.com/nico-byte/whisper-realtime-transcriber) contains the source code of a realtime transcriber for various [whisper](https://github.com/openai/whisper) models, published on [huggingface](https://github.com/huggingface/transformers).
 
 ## Prerequisites
 
@@ -14,7 +14,7 @@ Before you begin, make sure you meet the following prerequisites:
 ## Installation
 
 1. **Install torch with CUDA support (optional)**
-  - Follow the instructions [here](https://pytorch.org/get-started/locally/)
+  - Follow the instructions [here](https://pytorch.org/get-started/locally/) and install version >=2.4.0
 
 2. **Install the package:**
       ```bash
@@ -42,6 +42,14 @@ After completing the installation, you can now use the transcriber:
   transcriber = RealtimeTranscriber(inputstream_generator, asr_model)
 
   asyncio.run(transcriber.execute_event_loop())
+  ```
+
+  ```python
+  # Loading a custom model id
+  # When specifying model_id, model_size becomes obsolete
+  inputstream_generator = InputStreamGenerator()
+  asr_model = WhisperModel(inputstream_generator, model_id="openai/whisper-tiny")
+  # ... #
   ```
 
   ```python

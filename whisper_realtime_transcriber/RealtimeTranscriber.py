@@ -25,6 +25,8 @@ class RealtimeTranscriber:
 
     Attributes
     ----------
+    continuous : bool
+        Where the boolean to decide if the event loop runs continuously.
     verbose : bool
         Where the boolean to decide to print the model outputs is stored.
 
@@ -53,11 +55,50 @@ class RealtimeTranscriber:
         self.func = func
 
     def create_tasks(self) -> t.Tuple[t.AsyncGenerator, t.AsyncGenerator]:
+        """
+        Creates and returns two asynchronous tasks to handle audio processing and speech recognition.
+
+        This method sets up two asynchronous tasks using `asyncio.create_task()`:
+
+        1. `inputstream_task`: This task processes the audio input stream using the `_inputstream_generator` object.
+        2. `transcribe_task`: This task runs the automatic speech recognition (ASR) inference using the `_asr_model` object.
+
+        These tasks are returned as a tuple, allowing them to be awaited or managed concurrently.
+
+        Returns:
+            tuple: A tuple containing the following two asynchronous tasks:
+                - `inputstream_task` (asyncio.Task): The task responsible for processing the audio stream.
+                - `transcribe_task` (asyncio.Task): The task responsible for running ASR inference.
+        """
         inputstream_task = asyncio.create_task(self._inputstream_generator.process_audio())
         transcribe_task = asyncio.create_task(self._asr_model.run_inference())
         return inputstream_task, transcribe_task
 
     async def execute_event_loop(self) -> None:
+        """
+        Continuously executes an event loop to process audio input and perform transcription.
+
+        This method runs an infinite loop that continuously creates and executes tasks for processing audio and
+        transcribing speech. It handles different types of exceptions to ensure proper task management and graceful shutdown.
+
+        Workflow:
+            1. It creates two asynchronous tasks using the `create_tasks()` method:
+                - `inputstream_task`: Processes the audio input stream.
+                - `transcribe_task`: Performs the transcription using an ASR model.
+
+            2. Both tasks are executed concurrently using `asyncio.gather()`.
+               The transcription result is passed to `self.func()` for further processing.
+
+            3. Exception Handling:
+                - **CancelledError**: If the task is cancelled, both tasks are cancelled and the loop breaks.
+                - **KeyboardInterrupt**: If interrupted by the user (e.g., Ctrl+C), the program exits.
+                - **Exception**: Catches all other exceptions, logs an error message, and breaks the loop.
+
+            4. Finally block: Ensures that both tasks are cancelled, and any pending tasks are awaited even if an exception occurs.
+
+        Returns:
+            None
+        """
         while True:
             inputstream_task, transcribe_task = self.create_tasks()
 

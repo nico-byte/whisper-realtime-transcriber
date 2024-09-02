@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "whisper-realtime-transcriber"
-version = "0.1.1"
+version = "0.1.2"
 description = "Let whisper models transcribe in realtime."
 authors = ["Nico Fuchs"]
 readme = "README.md"
@@ -8,13 +8,13 @@ packages = [{include = "whisper_realtime_transcriber"}]
 
 [tool.poetry.dependencies]
 python = "^3.10"
-numpy = "1.25"
-sounddevice = "0.5.0"
-ffmpeg-python = "0.2.0"
-asyncio = "3.4.3"
-accelerate = "0.33.0"
-torch = "2.4.0"
-transformers = "4.44.2"
+numpy = "^1.25"
+sounddevice = "^0.5.0"
+ffmpeg-python = "^0.2.0"
+asyncio = "^3.4.3"
+accelerate = "^0.33.0"
+torch = "^2.4.0"
+transformers = "^4.44.2"
 
 [build-system]
 requires = ["poetry-core"]
