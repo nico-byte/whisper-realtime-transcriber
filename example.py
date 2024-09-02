@@ -11,10 +11,7 @@ def print_transcription(some_transcription):
 
 
 def main():
-    inputstream_generator = InputStreamGenerator()
-    asr_model = WhisperModel(inputstream_generator)
-
-    transcriber = RealtimeTranscriber(inputstream_generator, asr_model, continuous=False, func=print_transcription)
+    transcriber = RealtimeTranscriber(continuous=False)
 
     asyncio.run(transcriber.execute_event_loop())
 

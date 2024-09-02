@@ -70,7 +70,7 @@ class WhisperModel:
 
         # Check if generator samplerate matches models samplerate
         if self._inputstream_generator.samplerate != self._processor.feature_extractor.sampling_rate:
-            self._inputstream_generator.samplerate = self.processor.feature_extractor.sampling_rate
+            self._inputstream_generator.samplerate = self._processor.feature_extractor.sampling_rate
 
         self.verbose = verbose
 
@@ -202,7 +202,7 @@ class WhisperModel:
             decode_with_timestamps=False,
         )
 
-        self.transcription = transcript[0]
+        self.transcription = transcript[-1].strip()
 
     async def _print_transcriptions(self) -> None:
         """

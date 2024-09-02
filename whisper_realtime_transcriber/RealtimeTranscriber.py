@@ -12,9 +12,9 @@ class RealtimeTranscriber:
 
     Parameters
     ----------
-    inputstream_generator : InputStreamGenerator
+    inputstream_generator : Optional[InputStreamGenerator]
         The generator to be used for streaming audio.
-    asr_model : WhisperModel
+    asr_model : Optional[WhisperModel]
         The whisper model to be used for inference.
     continuous : bool
         Whether to generate audio data conituously or not. (default is True)
@@ -40,20 +40,31 @@ class RealtimeTranscriber:
 
     def __init__(
         self,
-        inputstream_generator: InputStreamGenerator,
-        asr_model: WhisperModel,
+        inputstream_generator: t.Optional[InputStreamGenerator] = None,
+        asr_model: t.Optional[WhisperModel] = None,
         continuous: bool = True,
         verbose: bool = True,
-        func: t.Callable = print,
+        func: t.Callable = None,
     ):
-        self._inputstream_generator = inputstream_generator
-        self._asr_model = asr_model
-
+        self._inputstream_generator = inputstream_generator if inputstream_generator is not None else self._init_generator()
+        self._asr_model = asr_model if asr_model is not None else self._init_asr_model()
+        
         self._inputstream_generator.verbose, self._asr_model.verbose = verbose, verbose
-        self._inputstream_generator.continuous, self._asr_model.continuous = continuous, continuous
-
+        
         self.func = func
+        if self.func is not None:
+            self._inputstream_generator.continuous, self._asr_model.continuous = False, False
+        else:
+            self.func = print
+            self._inputstream_generator.continuous, self._asr_model.continuous = continuous, continuous
 
+    @staticmethod
+    def _init_generator():
+        return InputStreamGenerator()
+    
+    def _init_asr_model(self):
+        return WhisperModel(self._inputstream_generator)
+    
     def create_tasks(self) -> t.Tuple[t.AsyncGenerator, t.AsyncGenerator]:
         """
         Creates and returns two asynchronous tasks to handle audio processing and speech recognition.

@@ -25,8 +25,8 @@ Before you begin, make sure you meet the following prerequisites:
 
 After completing the installation, you can now use the transcriber:
 
+  - Necessary imports
   ```python
-  # Necessary imports
   import asyncio
 
   from whisper_realtime_transcriber.InputStreamGenerator import InputStreamGenerator
@@ -34,36 +34,42 @@ After completing the installation, you can now use the transcriber:
   from whisper_realtime_transcriber.RealtimeTranscriber import RealtimeTranscriber
   ```
 
+  - Standard way - model and generator are initialized by the RealtimeTranscriber and all outputs get printed directly to the console.
   ```python
-  # Standard way - all outputs get printed directly to the console.
-  inputstream_generator = InputStreamGenerator()
-  asr_model = WhisperModel(inputstream_generator)
-
-  transcriber = RealtimeTranscriber(inputstream_generator, asr_model)
+  transcriber = RealtimeTranscriber()
 
   asyncio.run(transcriber.execute_event_loop())
   ```
 
+  - Loading a different model than the ones provided.
   ```python
-  # Loading a custom model id
-  # When specifying model_id, model_size becomes obsolete
-  inputstream_generator = InputStreamGenerator()
   asr_model = WhisperModel(inputstream_generator, model_id="openai/whisper-tiny")
-  # ... #
+
+  transcriber = RealtimeTranscriber(asr_model=asr_model)
+
+  asyncio.run(transcriber.execute_event_loop())
   ```
 
+  - Executing a custom function inside the RealtimeTranscriber.
   ```python
-  # Executing a custom function inside the RealtimeTranscriber.
   def print_transcription(some_transcription):
     print(some_transcription)
   
-  inputstream_generator = InputStreamGenerator()
-  asr_model = WhisperModel(inputstream_generator)
-
-  # specifying a function and setting continuous to False will allow one
-  # to execute a custom function during the event loop, that is doing something with the transcriptions
-  transcriber = RealtimeTranscriber(inputstream_generator, asr_model, continuous=False, func=print_transcription)
+  # Specifying a function will set continuous to False - this will allow one
+  # to execute a custom function during the coroutine, that is doing something with the transcriptions.
+  # After the function finished it's work the coroutine will restart.
+  transcriber = RealtimeTranscriber(func=print_transcription)
     
+  asyncio.run(transcriber.execute_event_loop())
+  ```
+
+  - Loading the InputStreamGenerator and/or Whisper Model with custom values.
+  ```python
+  inputstream_generator = InputStreamGenerator(samplerate=8000, blocksize=2000, min_chunks=2)
+  asr_model = WhisperModel(inputstream_generator, model_size="large-v3", device="cuda")
+
+  transcriber = RealtimeTranscriber(inputstream_generator, asr_model)
+
   asyncio.run(transcriber.execute_event_loop())
   ```
 
