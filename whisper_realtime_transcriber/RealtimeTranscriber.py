@@ -48,9 +48,9 @@ class RealtimeTranscriber:
     ):
         self._inputstream_generator = inputstream_generator if inputstream_generator is not None else self._init_generator()
         self._asr_model = asr_model if asr_model is not None else self._init_asr_model()
-        
+
         self._inputstream_generator.verbose, self._asr_model.verbose = verbose, verbose
-        
+
         self.func = func
         if self.func is not None:
             self._inputstream_generator.continuous, self._asr_model.continuous = False, False
@@ -61,10 +61,10 @@ class RealtimeTranscriber:
     @staticmethod
     def _init_generator():
         return InputStreamGenerator()
-    
+
     def _init_asr_model(self):
         return WhisperModel(self._inputstream_generator)
-    
+
     def create_tasks(self) -> t.Tuple[t.AsyncGenerator, t.AsyncGenerator]:
         """
         Creates and returns two asynchronous tasks to handle audio processing and speech recognition.

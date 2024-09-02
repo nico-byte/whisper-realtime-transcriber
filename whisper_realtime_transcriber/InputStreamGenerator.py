@@ -149,20 +149,20 @@ class InputStreamGenerator:
             indata_flattened: np.ndarray = abs(indata.flatten())
 
             # discard buffers that contain mostly silence
-            if ((np.percentile(indata_flattened, 10) <= self._silence_threshold) 
-                and self._global_ndarray is None) or (self.memory_safe and self.data_ready_event.is_set()
+            if ((np.percentile(indata_flattened, 10) <= self._silence_threshold) and self._global_ndarray is None) or (
+                self.memory_safe and self.data_ready_event.is_set()
             ):
                 continue
-            
+
             # concatenate buffers
             if self._global_ndarray is not None:
                 self._global_ndarray = np.concatenate((self._global_ndarray, indata), dtype="int16")
             else:
                 self._global_ndarray = indata
-            
+
             if (np.percentile(indata_flattened[-100:-1], 10) > self._silence_threshold) or self.data_ready_event.is_set():
                 continue
-            
+
             # Process the global ndarray if the required chunks are met
             if len(self._global_ndarray) / self._blocksize >= self._min_chunks:
                 self.temp_ndarray = self._global_ndarray.flatten().astype(np.float32) / 32768.0
