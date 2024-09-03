@@ -167,7 +167,7 @@ class InputStreamGenerator:
             if len(self._global_ndarray) / self._blocksize >= self._min_chunks:
                 self.temp_ndarray = self._global_ndarray.flatten().astype(np.float32) / 32768.0
                 self._global_ndarray = None
-                self.data_ready_event.set()
+                await self.data_ready_event.set()
 
                 if not self.continuous:
                     return None
