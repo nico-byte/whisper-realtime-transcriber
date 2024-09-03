@@ -41,15 +41,6 @@ After completing the installation, you can now use the transcriber:
   asyncio.run(transcriber.execute_event_loop())
   ```
 
-  - Loading a different model than the ones provided.
-  ```python
-  asr_model = WhisperModel(inputstream_generator, model_id="openai/whisper-tiny")
-
-  transcriber = RealtimeTranscriber(asr_model=asr_model)
-
-  asyncio.run(transcriber.execute_event_loop())
-  ```
-
   - Executing a custom function inside the RealtimeTranscriber.
   ```python
   def print_transcription(some_transcription):
@@ -66,7 +57,7 @@ After completing the installation, you can now use the transcriber:
   - Loading the InputStreamGenerator and/or Whisper Model with custom values.
   ```python
   inputstream_generator = InputStreamGenerator(samplerate=8000, blocksize=2000, min_chunks=2)
-  asr_model = WhisperModel(inputstream_generator, model_size="large-v3", device="cuda")
+  asr_model = WhisperModel(inputstream_generator, model_id="openai/whisper-tiny", device="cuda")
 
   transcriber = RealtimeTranscriber(inputstream_generator, asr_model)
 
