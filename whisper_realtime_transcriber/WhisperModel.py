@@ -147,13 +147,13 @@ class WhisperModel:
             await self._transcribe()
 
             if not self.continuous:
-                await self._inputstream_generator.data_ready_event.clear()
+                self._inputstream_generator.data_ready_event.clear()
                 return self.transcription
 
             # Compute the duration of the audio input and comparing it to the duration of inference.
             audio_duration = len(self._inputstream_generator.temp_ndarray) / self._inputstream_generator.samplerate
 
-            await self._inputstream_generator.data_ready_event.clear()
+            self._inputstream_generator.data_ready_event.clear()
 
             transcription_duration = time.perf_counter() - start_time
             realtime_factor = transcription_duration / audio_duration
@@ -169,6 +169,7 @@ class WhisperModel:
                 print(
                     f"Real-Time Factor: {realtime_factor:.3f}, try to use a smaller model or increase the min_chunks option in the config file."
                 )
+            asyncio.sleep(0.1)
 
     async def _transcribe(self) -> None:
         """

@@ -137,3 +137,4 @@ class RealtimeTranscriber:
                 inputstream_task.cancel()
                 transcribe_task.cancel()
                 await asyncio.gather(inputstream_task, transcribe_task, return_exceptions=True)
+                asyncio.sleep(0.1)
