@@ -169,7 +169,7 @@ class WhisperModel:
                 print(
                     f"Real-Time Factor: {realtime_factor:.3f}, try to use a smaller model or increase the min_chunks option in the config file."
                 )
-            asyncio.sleep(0.1)
+            await asyncio.sleep(0.1)
 
     async def _transcribe(self) -> None:
         """

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "whisper-realtime-transcriber"
-version = "0.1.6"
+version = "0.1.7"
 description = "Let whisper models transcribe in realtime."
 authors = ["Nico Fuchs"]
 readme = "README.md"
