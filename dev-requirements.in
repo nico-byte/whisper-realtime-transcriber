@@ -2,3 +2,4 @@
 pip-tools
 ruff
 poetry
+pytest

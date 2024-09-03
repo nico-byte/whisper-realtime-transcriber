@@ -16,6 +16,9 @@ accelerate = "^0.33.0"
 torch = "^2.4.0"
 transformers = "^4.44.2"
 
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.2"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
