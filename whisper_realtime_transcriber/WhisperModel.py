@@ -146,12 +146,17 @@ class WhisperModel:
 
             await self._transcribe()
 
+            audio_duration = len(self._inputstream_generator.temp_ndarray) / self._inputstream_generator.samplerate
+
+            if self._inputstream_generator.complete_phrase_event.is_set():
+                self._inputstream_generator.audio_ndarray = None
+                self._inputstream_generator.complete_phrase_event.clear()
+
             if not self.continuous:
                 self._inputstream_generator.data_ready_event.clear()
                 return self.transcription
 
             # Compute the duration of the audio input and comparing it to the duration of inference.
-            audio_duration = len(self._inputstream_generator.temp_ndarray) / self._inputstream_generator.samplerate
 
             self._inputstream_generator.data_ready_event.clear()
 
@@ -164,11 +169,13 @@ class WhisperModel:
             await self._print_transcriptions()
 
             # Warn the user when real-time factor>1
+            """
             if realtime_factor > 1 and not self._inputstream_generator.memory_safe:
                 print(f"\nTranscription took longer ({transcription_duration:.3f}s) than length of input in seconds ({audio_duration:.3f}s).")
                 print(
                     f"Real-Time Factor: {realtime_factor:.3f}, try to use a smaller model or increase the min_chunks option in the config file."
                 )
+            """
             await asyncio.sleep(0.1)
 
     async def _transcribe(self) -> None:

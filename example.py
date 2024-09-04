@@ -11,7 +11,7 @@ def print_transcription(some_transcription):
 
 
 def main():
-    transcriber = RealtimeTranscriber(continuous=False)
+    transcriber = RealtimeTranscriber(continuous=True, memory_safe=False)
 
     asyncio.run(transcriber.execute_event_loop())
 

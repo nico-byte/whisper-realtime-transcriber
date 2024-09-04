@@ -2,6 +2,7 @@ import numpy as np
 import asyncio
 import sys
 import typing as t
+from copy import deepcopy
 
 try:
     import sounddevice as sd
@@ -59,6 +60,7 @@ class InputStreamGenerator:
         blocksize: int = 4000,
         adjustment_time: int = 5,
         min_chunks: int = 6,
+        phrase_delta: int = 1.5,
         continuous: bool = True,
         memory_safe: bool = True,
         verbose: bool = True,
@@ -72,7 +74,11 @@ class InputStreamGenerator:
         self.verbose = verbose
 
         self._global_ndarray: np.ndarray = None
+        self.audio_ndarray: np.ndarray = None
         self.temp_ndarray: np.ndarray = None
+
+        self._phrase_delta_blocks = (samplerate // blocksize) * phrase_delta
+        self.complete_phrase_event = asyncio.Event()
 
         self._silence_threshold = None
 
@@ -144,12 +150,26 @@ class InputStreamGenerator:
             await self._set_silence_threshold()
 
         print("Listening...")
+        empty_blocks = 0
 
         async for indata, _ in self._generate():
             indata_flattened: np.ndarray = abs(indata.flatten())
+            if self._global_ndarray is not None and np.percentile(indata_flattened, 10) <= self._silence_threshold:
+                empty_blocks += 1
+                if empty_blocks >= self._phrase_delta_blocks:
+                    self.complete_phrase_event.set()
+                else:
+                    continue
+
+            if self.complete_phrase_event.is_set() and not self.data_ready_event.is_set():
+                await self._send_audio()
+
+                if not self.continuous:
+                    return None
+                continue
 
             # discard buffers that contain mostly silence
-            if ((np.percentile(indata_flattened, 10) <= self._silence_threshold) and self._global_ndarray is None) or (
+            if (np.percentile(indata_flattened, 10) <= self._silence_threshold and self._global_ndarray is None) or (
                 self.memory_safe and self.data_ready_event.is_set()
             ):
                 continue
@@ -160,17 +180,24 @@ class InputStreamGenerator:
             else:
                 self._global_ndarray = indata
 
+            empty_blocks = 0
+
             if (np.percentile(indata_flattened[-100:-1], 10) > self._silence_threshold) or self.data_ready_event.is_set():
                 continue
 
             # Process the global ndarray if the required chunks are met
             if len(self._global_ndarray) / self._blocksize >= self._min_chunks:
-                self.temp_ndarray = self._global_ndarray.flatten().astype(np.float32) / 32768.0
-                self._global_ndarray = None
-                self.data_ready_event.set()
+                await self._send_audio()
 
-                if not self.continuous:
-                    return None
+    async def _send_audio(self):
+        self.audio_ndarray = (
+            np.concatenate(self.audio_ndarray, self._global_ndarray, dtype="int16") if self.audio_ndarray is not None else self._global_ndarray
+        )
+        temp_array = deepcopy(self.audio_ndarray)
+        self.temp_ndarray = temp_array.flatten().astype(np.float32) / 32768.0
+        del temp_array
+        self._global_ndarray = None
+        self.data_ready_event.set()
 
     async def _set_silence_threshold(self) -> None:
         """

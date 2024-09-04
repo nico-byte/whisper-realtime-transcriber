@@ -43,6 +43,7 @@ class RealtimeTranscriber:
         inputstream_generator: t.Optional[InputStreamGenerator] = None,
         asr_model: t.Optional[WhisperModel] = None,
         continuous: bool = True,
+        memory_safe: bool = True,
         verbose: bool = True,
         func: t.Callable = None,
     ):
@@ -50,6 +51,7 @@ class RealtimeTranscriber:
         self._asr_model = asr_model if asr_model is not None else self._init_asr_model()
 
         self._inputstream_generator.verbose, self._asr_model.verbose = verbose, verbose
+        self._inputstream_generator.memory_safe = memory_safe
 
         self.func = func
         if self.func is not None:
@@ -128,10 +130,6 @@ class RealtimeTranscriber:
 
             except KeyboardInterrupt:
                 sys.exit("\nInterrupted by user")
-
-            except Exception as e:
-                print(f"An error occurred: {e}")
-                break
 
             finally:
                 inputstream_task.cancel()
