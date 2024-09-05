@@ -44,6 +44,7 @@ class RealtimeTranscriber:
         asr_model: t.Optional[WhisperModel] = None,
         continuous: bool = True,
         memory_safe: bool = True,
+        device: str = "cpu",
         verbose: bool = True,
         func: t.Callable = None,
     ):
@@ -52,6 +53,7 @@ class RealtimeTranscriber:
 
         self._inputstream_generator.verbose, self._asr_model.verbose = verbose, verbose
         self._inputstream_generator.memory_safe = memory_safe
+        self._asr_model.device = device
 
         self.func = func
         if self.func is not None:

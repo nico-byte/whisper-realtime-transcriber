@@ -74,7 +74,6 @@ class InputStreamGenerator:
         self.verbose = verbose
 
         self._global_ndarray: np.ndarray = None
-        self.audio_ndarray: np.ndarray = None
         self.temp_ndarray: np.ndarray = None
 
         self._phrase_delta_blocks = (samplerate // blocksize) * phrase_delta
@@ -157,15 +156,11 @@ class InputStreamGenerator:
             if self._global_ndarray is not None and np.percentile(indata_flattened, 10) <= self._silence_threshold:
                 empty_blocks += 1
                 if empty_blocks >= self._phrase_delta_blocks:
+                    empty_blocks = 0
                     self.complete_phrase_event.set()
-                else:
-                    continue
-
-            if self.complete_phrase_event.is_set() and not self.data_ready_event.is_set():
-                await self._send_audio()
-
-                if not self.continuous:
-                    return None
+                    await self._send_audio() if not self.data_ready_event.is_set() else None
+                    if not self.continuous:
+                        return None
                 continue
 
             # discard buffers that contain mostly silence
@@ -190,12 +185,7 @@ class InputStreamGenerator:
                 await self._send_audio()
 
     async def _send_audio(self):
-        self.audio_ndarray = (
-            np.concatenate(self.audio_ndarray, self._global_ndarray, dtype="int16") if self.audio_ndarray is not None else self._global_ndarray
-        )
-        temp_array = deepcopy(self.audio_ndarray)
-        self.temp_ndarray = temp_array.flatten().astype(np.float32) / 32768.0
-        del temp_array
+        self.temp_ndarray = deepcopy(self._global_ndarray)
         self._global_ndarray = None
         self.data_ready_event.set()
 
@@ -240,7 +230,7 @@ class InputStreamGenerator:
 
             # Stop recording after ADJUSTMENT_TIME seconds
             if blocks_processed >= self._adjustment_time * (self.samplerate / self._blocksize):
-                self._silence_threshold = float(np.percentile(loudness_values, 20))
+                self._silence_threshold = float(np.percentile(loudness_values, 10))
                 break
 
         if self.verbose:

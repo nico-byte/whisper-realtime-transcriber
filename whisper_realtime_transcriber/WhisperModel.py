@@ -2,6 +2,8 @@ import torch
 import asyncio
 import time
 import typing as t
+import numpy as np
+import os
 
 from whisper_realtime_transcriber.utils.utils import set_device
 from whisper_realtime_transcriber.InputStreamGenerator import InputStreamGenerator
@@ -66,7 +68,8 @@ class WhisperModel:
 
         self._load_model(model_size, model_id)
 
-        self.transcription: str = ""
+        self.audio_data: np.ndarray = None
+        self.transcriptions: list[str] = [[""]]
 
         # Check if generator samplerate matches models samplerate
         if self._inputstream_generator.samplerate != self._processor.feature_extractor.sampling_rate:
@@ -101,7 +104,7 @@ class WhisperModel:
 
         self._processor = WhisperProcessor.from_pretrained(self._model_id)
 
-    async def run_inference(self) -> str:
+    async def run_inference(self) -> list:
         """
         Runs the speech recognition inference in a loop, processing audio input as it becomes available.
 
@@ -142,40 +145,27 @@ class WhisperModel:
         """
         while True:
             await self._inputstream_generator.data_ready_event.wait()
-            start_time = time.perf_counter()
 
             await self._transcribe()
 
-            audio_duration = len(self._inputstream_generator.temp_ndarray) / self._inputstream_generator.samplerate
-
-            if self._inputstream_generator.complete_phrase_event.is_set():
-                self._inputstream_generator.audio_ndarray = None
+            if self._inputstream_generator.complete_phrase_event.is_set() or not self.continuous:
+                self.audio_data: np.ndarray = None
+                self.transcriptions.append([""])
+                self._inputstream_generator.data_ready_event.clear()
                 self._inputstream_generator.complete_phrase_event.clear()
 
             if not self.continuous:
-                self._inputstream_generator.data_ready_event.clear()
-                return self.transcription
+                return [transcription for transcription in self.transcriptions if transcription != [""]]
 
             # Compute the duration of the audio input and comparing it to the duration of inference.
 
             self._inputstream_generator.data_ready_event.clear()
-
-            transcription_duration = time.perf_counter() - start_time
-            realtime_factor = transcription_duration / audio_duration
 
             if not self.verbose:
                 continue
 
             await self._print_transcriptions()
 
-            # Warn the user when real-time factor>1
-            """
-            if realtime_factor > 1 and not self._inputstream_generator.memory_safe:
-                print(f"\nTranscription took longer ({transcription_duration:.3f}s) than length of input in seconds ({audio_duration:.3f}s).")
-                print(
-                    f"Real-Time Factor: {realtime_factor:.3f}, try to use a smaller model or increase the min_chunks option in the config file."
-                )
-            """
             await asyncio.sleep(0.1)
 
     async def _transcribe(self) -> None:
@@ -183,7 +173,13 @@ class WhisperModel:
         Main logic for running the actual inference on the models.
         """
         # Convert raw audio data to feasible input for the model.
-        waveform = torch.from_numpy(self._inputstream_generator.temp_ndarray)
+        self.audio_data = (
+            np.concatenate((self.audio_data, self._inputstream_generator.temp_ndarray), dtype="int16")
+            if self.audio_data is not None
+            else self._inputstream_generator.temp_ndarray
+        )
+        waveform = self.audio_data.flatten().astype(np.float32) / 32768.0
+        waveform = torch.from_numpy(waveform)
 
         inputs = self._processor(
             waveform,
@@ -210,21 +206,16 @@ class WhisperModel:
             decode_with_timestamps=False,
         )
 
-        self.transcription = transcript[-1].strip()
+        self.transcriptions[-1] = transcript[-1].strip()
 
     async def _print_transcriptions(self) -> None:
         """
-        Prints the model trasncription.
+        Prints the model transcription.
         """
-        output = self.transcription
+        output = [transcription for transcription in self.transcriptions if transcription != [""]]
 
-        char_limit: int = 77  # The character limit after which a new line should start
-        current_line_length: int = 0  # Current length of the line being printed
+        os.system("cls") if os.name == "nt" else os.system("clear")
 
-        # Calculate the new line length if the update is added
-        new_line_length: int = current_line_length + len(output)
-        if new_line_length > char_limit:
-            print()  # Start a new line if the limit is exceeded
-            current_line_length = 0  # Reset the current line length
-        print(output, end="", flush=True)  # Print the update without a newline, flush to ensure it's displayed
-        current_line_length += len(output)  # Update the current line length
+        for transcription in output:
+            print(transcription)
+        print("", end="", flush=True)
