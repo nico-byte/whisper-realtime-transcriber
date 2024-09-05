@@ -1,13 +1,38 @@
 import asyncio
 import sys
+import os
 
 from whisper_realtime_transcriber.InputStreamGenerator import InputStreamGenerator
 from whisper_realtime_transcriber.WhisperModel import WhisperModel
 from whisper_realtime_transcriber.RealtimeTranscriber import RealtimeTranscriber
 
 
-def print_transcription(some_transcription):
-    print(some_transcription)
+async def _print_transcriptions(transcriptions: list) -> None:
+    """
+    Prints the model transcription.
+    """
+    output = [transcription for transcription in transcriptions if transcription != [""]]
+
+    os.system("cls") if os.name == "nt" else os.system("clear")
+
+    for transcription in output:
+        words = transcription.split(" ")
+        line_count = 0
+        split_input = ""
+        for word in words:
+            line_count += 1
+            line_count += len(word)
+            if line_count > 77:
+                split_input += "\n"
+                line_count = len(word) + 1
+                split_input += word
+                split_input += " "
+            else:
+                split_input += word
+                split_input += " "
+
+        print(split_input)
+    print("", end="", flush=True)
 
 
 def main():

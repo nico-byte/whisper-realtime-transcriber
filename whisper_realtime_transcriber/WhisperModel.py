@@ -62,6 +62,8 @@ class WhisperModel:
 
         self._device = set_device(device)
 
+        self._working: bool = False
+
         self._torch_dtype = torch.float16 if self._device == torch.device("cuda") else torch.float32
         if self._device == torch.device("cuda"):
             torch.backends.cuda.matmul.allow_tf32
@@ -146,7 +148,10 @@ class WhisperModel:
         while True:
             await self._inputstream_generator.data_ready_event.wait()
 
-            await self._transcribe()
+            if not self._working:
+                await self._transcribe()
+            else:
+                continue
 
             if self._inputstream_generator.complete_phrase_event.is_set() or not self.continuous:
                 self.audio_data: np.ndarray = None
@@ -172,6 +177,7 @@ class WhisperModel:
         """
         Main logic for running the actual inference on the models.
         """
+        self._working = True
         # Convert raw audio data to feasible input for the model.
         self.audio_data = (
             np.concatenate((self.audio_data, self._inputstream_generator.temp_ndarray), dtype="int16")
@@ -208,14 +214,31 @@ class WhisperModel:
 
         self.transcriptions[-1] = transcript[-1].strip()
 
+        self._working = False
+
     async def _print_transcriptions(self) -> None:
         """
         Prints the model transcription.
         """
         output = [transcription for transcription in self.transcriptions if transcription != [""]]
 
-        os.system("cls") if os.name == "nt" else os.system("clear")
+        # os.system("cls") if os.name == "nt" else os.system("clear")
 
         for transcription in output:
-            print(transcription)
+            words = transcription.split(" ")
+            line_count = 0
+            split_input = ""
+            for word in words:
+                line_count += 1
+                line_count += len(word)
+                if line_count > 77:
+                    split_input += "\n"
+                    line_count = len(word) + 1
+                    split_input += word
+                    split_input += " "
+                else:
+                    split_input += word
+                    split_input += " "
+
+            print(split_input)
         print("", end="", flush=True)

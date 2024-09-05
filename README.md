@@ -41,10 +41,10 @@ After completing the installation, you can now use the transcriber:
   asyncio.run(transcriber.execute_event_loop())
   ```
 
-  - Executing a custom function inside the RealtimeTranscriber.
+  - Executing a custom function inside the RealtimeTranscriber. All transcriptions are saved to a list.
   ```python
-  def print_transcription(some_transcription):
-    print(some_transcription)
+  def print_transcription(some_transcriptions: list):
+    print(some_transcriptions)
   
   # Specifying a function will set continuous to False - this will allow one
   # to execute a custom function during the coroutine, that is doing something with the transcriptions.
