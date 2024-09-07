@@ -231,7 +231,7 @@ class WhisperModel:
             for word in words:
                 line_count += 1
                 line_count += len(word)
-                if line_count > 77:
+                if line_count > os.get_terminal_size().columns:
                     split_input += "\n"
                     line_count = len(word) + 1
                     split_input += word

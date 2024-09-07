@@ -18,6 +18,10 @@ class RealtimeTranscriber:
         The whisper model to be used for inference.
     continuous : bool
         Whether to generate audio data conituously or not. (default is True)
+    memory_safe: bool
+        Whether to pause the generation audio data during the inference of the asr model or not. (default is True)
+    device : str
+        The device to be used for inference. ("cpu", "cuda", "mps" - default is "cpu")
     verbose : bool
         Whether to print the additional information to the console or not. (default is True)
     func : Callable
@@ -51,23 +55,25 @@ class RealtimeTranscriber:
         self._inputstream_generator = inputstream_generator if inputstream_generator is not None else self._init_generator()
         self._asr_model = asr_model if asr_model is not None else self._init_asr_model()
 
-        self._inputstream_generator.verbose, self._asr_model.verbose = verbose, verbose
+        self._configure(verbose, memory_safe, device, continuous)
+        self.func = func or print
+
+    def _default_inputstream_generator(self) -> InputStreamGenerator:
+        # Create and return the default InputStreamGenerator
+        return InputStreamGenerator()
+
+    def _default_asr_model(self) -> WhisperModel:
+        # Create and return the default WhisperModel
+        return WhisperModel(self._inputstream_generator)
+    
+    def _configure(self, verbose: bool, memory_safe: bool, device: str, continuous: bool):
+        self._inputstream_generator.verbose = verbose
+        self._asr_model.verbose = verbose
         self._inputstream_generator.memory_safe = memory_safe
         self._asr_model.device = device
 
-        self.func = func
-        if self.func is not None:
-            self._inputstream_generator.continuous, self._asr_model.continuous = False, False
-        else:
-            self.func = print
-            self._inputstream_generator.continuous, self._asr_model.continuous = continuous, continuous
-
-    @staticmethod
-    def _init_generator():
-        return InputStreamGenerator()
-
-    def _init_asr_model(self):
-        return WhisperModel(self._inputstream_generator)
+        self._inputstream_generator.continuous = continuous
+        self._asr_model.continuous = continuous
 
     def create_tasks(self) -> t.Tuple[t.AsyncGenerator, t.AsyncGenerator]:
         """
@@ -107,7 +113,6 @@ class RealtimeTranscriber:
             3. Exception Handling:
                 - **CancelledError**: If the task is cancelled, both tasks are cancelled and the loop breaks.
                 - **KeyboardInterrupt**: If interrupted by the user (e.g., Ctrl+C), the program exits.
-                - **Exception**: Catches all other exceptions, logs an error message, and breaks the loop.
 
             4. Finally block: Ensures that both tasks are cancelled, and any pending tasks are awaited even if an exception occurs.
 
