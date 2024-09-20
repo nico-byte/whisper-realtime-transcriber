@@ -32,7 +32,7 @@ class RealtimeTranscriber:
     continuous : bool
         Where the boolean to decide if the event loop runs continuously.
     verbose : bool
-        Where the boolean to decide to print the model outputs is stored.
+        Where the boolean to decide if the model outputs should be printed to the console.
 
     Methods
     -------
@@ -50,7 +50,7 @@ class RealtimeTranscriber:
         memory_safe: bool = True,
         device: str = "cpu",
         verbose: bool = True,
-        func: t.Callable = None,
+        func: t.Callable[..., t.Any] = None,
     ):
         self._inputstream_generator = inputstream_generator if inputstream_generator is not None else self._default_inputstream_generator()
         self._asr_model = asr_model if asr_model is not None else self._default_asr_model()

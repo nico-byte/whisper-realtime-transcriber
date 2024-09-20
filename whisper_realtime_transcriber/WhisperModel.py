@@ -1,6 +1,5 @@
 import torch
 import asyncio
-import time
 import typing as t
 import numpy as np
 import os
@@ -84,8 +83,7 @@ class WhisperModel:
         if model_id is None:
             self.available_model_sizes = ["small", "medium", "large-v3"]
 
-            self._model_size = model_size
-            self._model_size = "large-v3" if model_size == "large" else self._model_size
+            self._model_size = "large-v3" if model_size == "large" else model_size
 
             if model_size not in self.available_model_sizes:
                 print(f"Model size not supported. Defaulting to {self._model_size}.")
@@ -232,8 +230,7 @@ class WhisperModel:
             line_count = 0
             split_input = ""
             for word in words:
-                line_count += 1
-                line_count += len(word)
+                line_count += len(word) + 1
                 if line_count > terminal_size.columns:
                     split_input += "\n"
                     line_count = len(word) + 1
