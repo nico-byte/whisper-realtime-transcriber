@@ -52,20 +52,21 @@ class RealtimeTranscriber:
         verbose: bool = True,
         func: t.Callable = None,
     ):
-        self._inputstream_generator = inputstream_generator if inputstream_generator is not None else self._init_generator()
-        self._asr_model = asr_model if asr_model is not None else self._init_asr_model()
+        self._inputstream_generator = inputstream_generator if inputstream_generator is not None else self._default_inputstream_generator()
+        self._asr_model = asr_model if asr_model is not None else self._default_asr_model()
 
         self._configure(verbose, memory_safe, device, continuous)
         self.func = func or print
 
-    def _default_inputstream_generator(self) -> InputStreamGenerator:
+    @staticmethod
+    def _default_inputstream_generator() -> InputStreamGenerator:
         # Create and return the default InputStreamGenerator
         return InputStreamGenerator()
 
     def _default_asr_model(self) -> WhisperModel:
         # Create and return the default WhisperModel
         return WhisperModel(self._inputstream_generator)
-    
+
     def _configure(self, verbose: bool, memory_safe: bool, device: str, continuous: bool):
         self._inputstream_generator.verbose = verbose
         self._asr_model.verbose = verbose
@@ -124,8 +125,8 @@ class RealtimeTranscriber:
 
             # Execute the tasks and catch exceptions
             try:
-                _, transcription = await asyncio.gather(inputstream_task, transcribe_task)
-                self.func(transcription)
+                _, transcriptions = await asyncio.gather(inputstream_task, transcribe_task)
+                await self.func(transcriptions)
 
             except asyncio.CancelledError:
                 print("\nTranscribe task cancelled.")

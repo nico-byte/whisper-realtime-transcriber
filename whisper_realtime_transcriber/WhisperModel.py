@@ -4,6 +4,7 @@ import time
 import typing as t
 import numpy as np
 import os
+import shutil
 
 from whisper_realtime_transcriber.utils.utils import set_device
 from whisper_realtime_transcriber.InputStreamGenerator import InputStreamGenerator
@@ -66,7 +67,7 @@ class WhisperModel:
 
         self._torch_dtype = torch.float16 if self._device == torch.device("cuda") else torch.float32
         if self._device == torch.device("cuda"):
-            torch.backends.cuda.matmul.allow_tf32
+            torch.backends.cuda.matmul.allow_tf32 = True
 
         self._load_model(model_size, model_id)
 
@@ -87,7 +88,7 @@ class WhisperModel:
             self._model_size = "large-v3" if model_size == "large" else self._model_size
 
             if model_size not in self.available_model_sizes:
-                print(f"Model size not supported. Defaulting to {self.model_size}.")
+                print(f"Model size not supported. Defaulting to {self._model_size}.")
 
             self._model_id = (
                 f"distil-whisper/distil-{self._model_size}.en"
@@ -171,16 +172,16 @@ class WhisperModel:
 
             await self._print_transcriptions()
 
-            await asyncio.sleep(0.1)
-
     async def _transcribe(self) -> None:
         """
         Main logic for running the actual inference on the models.
         """
         self._working = True
+        a1 = self.audio_data
+        a2 = self._inputstream_generator.temp_ndarray
         # Convert raw audio data to feasible input for the model.
         self.audio_data = (
-            np.concatenate((self.audio_data, self._inputstream_generator.temp_ndarray), dtype="int16")
+            np.concatenate((a1, a2), axis=None, dtype="int16")
             if self.audio_data is not None
             else self._inputstream_generator.temp_ndarray
         )
@@ -222,7 +223,9 @@ class WhisperModel:
         """
         output = [transcription for transcription in self.transcriptions if transcription != [""]]
 
-        # os.system("cls") if os.name == "nt" else os.system("clear")
+        os.system("cls") if os.name == "nt" else os.system("clear")
+
+        terminal_size = shutil.get_terminal_size()
 
         for transcription in output:
             words = transcription.split(" ")
@@ -231,7 +234,7 @@ class WhisperModel:
             for word in words:
                 line_count += 1
                 line_count += len(word)
-                if line_count > os.get_terminal_size().columns:
+                if line_count > terminal_size.columns:
                     split_input += "\n"
                     line_count = len(word) + 1
                     split_input += word

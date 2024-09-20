@@ -36,7 +36,7 @@ async def _print_transcriptions(transcriptions: list) -> None:
 
 
 def main():
-    transcriber = RealtimeTranscriber(device="mps", memory_safe=False)
+    transcriber = RealtimeTranscriber(device="mps", memory_safe=False, continuous=False, func=_print_transcriptions)
 
     asyncio.run(transcriber.execute_event_loop())
 

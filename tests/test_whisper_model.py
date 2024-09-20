@@ -10,6 +10,7 @@ def mock_inputstream_generator():
     generator = MagicMock(spec=InputStreamGenerator)
     generator.samplerate = 16000
     generator.data_ready_event = AsyncMock()
+    generator.complete_phrase_event = AsyncMock()
     generator.temp_ndarray = np.random.rand(16000).astype(np.float32)
     return generator
 
@@ -36,7 +37,7 @@ async def test_transcribe(mock_inputstream_generator, mock_whisper_model):
 
     await whisper_model._transcribe()
 
-    assert whisper_model.transcription != "" and isinstance(whisper_model.transcription, str)
+    assert whisper_model.transcriptions != "" and isinstance(whisper_model.transcriptions, list)
 
 
 @pytest.mark.asyncio
@@ -49,7 +50,7 @@ async def test_run_inference_non_continuous(mock_inputstream_generator, mock_whi
     await whisper_model.run_inference()
 
     assert mock_inputstream_generator.data_ready_event.wait.called
-    assert whisper_model.transcription != "" and isinstance(whisper_model.transcription, str)
+    assert whisper_model.transcriptions[0] != "" and isinstance(whisper_model.transcriptions, list)
 
 
 @pytest.mark.asyncio
@@ -73,7 +74,7 @@ async def test_run_inference_continuous(mock_inputstream_generator, mock_whisper
     await whisper_model.run_inference()
 
     assert side_effect.counter == 2
-    assert whisper_model.transcription != "" and isinstance(whisper_model.transcription, str)
+    assert whisper_model.transcriptions[0] != "" and isinstance(whisper_model.transcriptions, list)
 
 
 @pytest.mark.asyncio
@@ -82,7 +83,7 @@ async def test_print_transcriptions(mock_inputstream_generator, mock_whisper_mod
 
     whisper_model = WhisperModel(inputstream_generator=mock_inputstream_generator, continuous=False, verbose=True)
 
-    whisper_model.transcription = "This is a test transcription."
+    whisper_model.transcriptions[-1] = "This is a test transcription."
 
     await whisper_model._print_transcriptions()
 
