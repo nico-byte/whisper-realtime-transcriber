@@ -5,12 +5,40 @@ import numpy as np
 import os
 import shutil
 
+from dataclasses import dataclass, field
+
 from whisper_realtime_transcriber.utils.utils import set_device
 from whisper_realtime_transcriber.InputStreamGenerator import InputStreamGenerator
 from transformers import WhisperProcessor, WhisperForConditionalGeneration
 from transformers import logging
 
 logging.set_verbosity_error()
+
+@dataclass
+class ModelOutput:
+    logits: list[torch.Tensor]
+    transcriptions: list[str]
+
+
+@dataclass
+class ModelArguments:
+    """
+    Arguments for creating the whisper model.
+    """
+    model_id: t.Optional[str] = field(
+        default=None,
+        metadata={"help": "The model id to be used for loading the model."}
+    )
+    model_size: str = field(
+        default="small",
+        metadata={"help": "The size of the model to be used for inference."}
+        # choices=["small", "medium", "large-v3"]
+    )
+    device: str = field(
+        default="cpu",
+        metadata={"help": "The device to be used for inference."}
+        # choices=["cpu", "cuda", "mps"]
+    )
 
 
 class WhisperModel:
@@ -21,25 +49,12 @@ class WhisperModel:
     ----------
     inputstream_generator : InputStreamGenerator
         The generator to be used for streaming audio.
-    model_id : Optional[str]
-        The model id to be used for loading the model. (any whisper model from huggingface - default is None)
-    model_size : str
-        The size of the model to be used for inference. ("small", "medium", "large-v3" - default is "small")
-    device : str
-        The device to be used for inference. ("cpu", "cuda", "mps" - default is "cpu")
+    model_args : ModelArguments
+        The arguments to be used for creating the model.
     continuous : bool
         Whether to generate audio data conituously or not. (default is True)
     verbose : bool
         Whether to print the model outputs to the console or not. (default is True)
-
-    Attributes
-    ----------
-    transcription : str
-        Where the (processed) model outputs are stored.
-    continuous : bool
-        Where the boolean to decide if the WhisperModel runs continuously.
-    verbose : bool
-        Where the boolean to decide to print the model outputs is stored.
 
     Methods
     -------
@@ -50,9 +65,7 @@ class WhisperModel:
     def __init__(
         self,
         inputstream_generator: InputStreamGenerator,
-        model_id: t.Optional[str] = None,
-        model_size: str = "small",
-        device: str = "cpu",
+        model_args: ModelArguments,
         continuous: bool = True,
         verbose: bool = True,
     ):
@@ -60,7 +73,7 @@ class WhisperModel:
 
         self.continuous = continuous
 
-        self._device = set_device(device)
+        self._device = set_device(model_args.device)
 
         self._working: bool = False
 
@@ -68,10 +81,11 @@ class WhisperModel:
         if self._device == torch.device("cuda"):
             torch.backends.cuda.matmul.allow_tf32 = True
 
-        self._load_model(model_size, model_id)
+        self._load_model(model_args.model_size, model_args.model_id)
 
-        self.audio_data: np.ndarray = None
-        self.transcriptions: list[str] = [[""]]
+        self.audio_data: np.ndarray = np.empty(0, dtype=np.int16)
+
+        self._output = ModelOutput([torch.empty(0, 1)], [""])
 
         # Check if generator samplerate matches models samplerate
         if self._inputstream_generator.samplerate != self._processor.feature_extractor.sampling_rate:
@@ -153,36 +167,38 @@ class WhisperModel:
                 continue
 
             if self._inputstream_generator.complete_phrase_event.is_set() or not self.continuous:
-                self.audio_data: np.ndarray = None
-                self.transcriptions.append([""])
+                self.audio_data: np.ndarray = np.empty(0, dtype=np.int16)
+                self._output.logits.append(torch.empty(0, 1))
+                self._output.transcriptions.append("")
                 self._inputstream_generator.data_ready_event.clear()
                 self._inputstream_generator.complete_phrase_event.clear()
 
             if not self.continuous:
-                return [transcription for transcription in self.transcriptions if transcription != [""]]
-
-            # Compute the duration of the audio input and comparing it to the duration of inference.
+                return [transcription for transcription in self._output.transcriptions if transcription != ""]
 
             self._inputstream_generator.data_ready_event.clear()
 
             if not self.verbose:
                 continue
 
-            await self._print_transcriptions()
+            asyncio.to_thread(self._print_transcriptions)
 
     async def _transcribe(self) -> None:
         """
         Main logic for running the actual inference on the models.
         """
         self._working = True
+
         a1 = self.audio_data
         a2 = self._inputstream_generator.temp_ndarray
+
         # Convert raw audio data to feasible input for the model.
         self.audio_data = (
-            np.concatenate((a1, a2), axis=None, dtype="int16")
+            np.concatenate((a1, a2), axis=0, dtype="int16")
             if self.audio_data is not None
             else self._inputstream_generator.temp_ndarray
         )
+
         waveform = self.audio_data.flatten().astype(np.float32) / 32768.0
         waveform = torch.from_numpy(waveform)
 
@@ -211,15 +227,16 @@ class WhisperModel:
             decode_with_timestamps=False,
         )
 
-        self.transcriptions[-1] = transcript[-1].strip()
+        self._output.transcriptions[-1] = transcript[-1].strip()
+        self._output.logits[-1] = generated_ids[-1]
 
         self._working = False
 
-    async def _print_transcriptions(self) -> None:
+    def _print_transcriptions(self) -> None:
         """
         Prints the model transcription.
         """
-        output = [transcription for transcription in self.transcriptions if transcription != [""]]
+        output = [transcription for transcription in self._output.transcriptions if transcription != ""]
 
         os.system("cls") if os.name == "nt" else os.system("clear")
 
