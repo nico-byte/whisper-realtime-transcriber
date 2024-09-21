@@ -5,7 +5,7 @@ import numpy as np
 import os
 import shutil
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 
 from whisper_realtime_transcriber.utils.utils import set_device
 from whisper_realtime_transcriber.InputStreamGenerator import InputStreamGenerator
@@ -39,22 +39,19 @@ class ModelArguments:
         metadata={"help": "The device to be used for inference."}
         # choices=["cpu", "cuda", "mps"]
     )
+    continuous: bool = field(
+        default=True,
+        metadata={"help": "Whether to generate audio data continuously or not."}
+    )
+    verbose: bool = field(
+        default=True,
+        metadata={"help": "Whether to print the model outputs to the console or not."}
+    )
 
 
 class WhisperModel:
     """
     Loading and using the specified whisper model.
-
-    Parameters
-    ----------
-    inputstream_generator : InputStreamGenerator
-        The generator to be used for streaming audio.
-    model_args : ModelArguments
-        The arguments to be used for creating the model.
-    continuous : bool
-        Whether to generate audio data conituously or not. (default is True)
-    verbose : bool
-        Whether to print the model outputs to the console or not. (default is True)
 
     Methods
     -------
@@ -65,13 +62,11 @@ class WhisperModel:
     def __init__(
         self,
         inputstream_generator: InputStreamGenerator,
-        model_args: ModelArguments,
-        continuous: bool = True,
-        verbose: bool = True,
+        model_args: ModelArguments
     ):
         self._inputstream_generator = inputstream_generator
 
-        self.continuous = continuous
+        self._continuous = model_args.continuous
 
         self._device = set_device(model_args.device)
 
@@ -83,7 +78,7 @@ class WhisperModel:
 
         self._load_model(model_args.model_size, model_args.model_id)
 
-        self.audio_data: np.ndarray = np.empty(0, dtype=np.int16)
+        self.audio_data: np.ndarray = np.empty(0, dtype="int16")
 
         self._output = ModelOutput([torch.empty(0, 1)], [""])
 
@@ -91,7 +86,7 @@ class WhisperModel:
         if self._inputstream_generator.samplerate != self._processor.feature_extractor.sampling_rate:
             self._inputstream_generator.samplerate = self._processor.feature_extractor.sampling_rate
 
-        self.verbose = verbose
+        self._verbose = model_args.verbose
 
     def _load_model(self, model_size: str, model_id: t.Optional[str]) -> None:
         if model_id is None:
@@ -119,7 +114,7 @@ class WhisperModel:
 
         self._processor = WhisperProcessor.from_pretrained(self._model_id)
 
-    async def run_inference(self) -> list:
+    async def run_inference(self) -> dict:
         """
         Runs the speech recognition inference in a loop, processing audio input as it becomes available.
 
@@ -166,19 +161,21 @@ class WhisperModel:
             else:
                 continue
 
-            if self._inputstream_generator.complete_phrase_event.is_set() or not self.continuous:
+            if self._inputstream_generator.complete_phrase_event.is_set() or not self._continuous:
                 self.audio_data: np.ndarray = np.empty(0, dtype=np.int16)
                 self._output.logits.append(torch.empty(0, 1))
                 self._output.transcriptions.append("")
                 self._inputstream_generator.data_ready_event.clear()
                 self._inputstream_generator.complete_phrase_event.clear()
 
-            if not self.continuous:
-                return [transcription for transcription in self._output.transcriptions if transcription != ""]
+            if not self._continuous:
+                self._output.transcriptions.remove("")
+                self._output.logits.remove(torch.empty(0, 1))
+                return asdict(self._output)
 
             self._inputstream_generator.data_ready_event.clear()
 
-            if not self.verbose:
+            if not self._verbose:
                 continue
 
             asyncio.to_thread(self._print_transcriptions)

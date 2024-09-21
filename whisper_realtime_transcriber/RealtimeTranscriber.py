@@ -1,38 +1,17 @@
 import asyncio
 import sys
 import typing as t
+from dataclasses import dataclass, asdict
 
-from .WhisperModel import WhisperModel
-from .InputStreamGenerator import InputStreamGenerator
+from transformers.models.pop2piano.convert_pop2piano_weights_to_hf import model
+
+from .WhisperModel import WhisperModel, ModelArguments
+from .InputStreamGenerator import InputStreamGenerator, GeneratorArguments
 
 
 class RealtimeTranscriber:
     """
     Loading and using the RealtimeTranscriber.
-
-    Parameters
-    ----------
-    inputstream_generator : Optional[InputStreamGenerator]
-        The generator to be used for streaming audio.
-    asr_model : Optional[WhisperModel]
-        The whisper model to be used for inference.
-    continuous : bool
-        Whether to generate audio data conituously or not. (default is True)
-    memory_safe: bool
-        Whether to pause the generation audio data during the inference of the asr model or not. (default is True)
-    device : str
-        The device to be used for inference. ("cpu", "cuda", "mps" - default is "cpu")
-    verbose : bool
-        Whether to print the additional information to the console or not. (default is True)
-    func : Callable
-        A specified function that is doing something with the transcriptions. (default is the builtin print function)
-
-    Attributes
-    ----------
-    continuous : bool
-        Where the boolean to decide if the event loop runs continuously.
-    verbose : bool
-        Where the boolean to decide if the model outputs should be printed to the console.
 
     Methods
     -------
@@ -45,36 +24,23 @@ class RealtimeTranscriber:
     def __init__(
         self,
         inputstream_generator: t.Optional[InputStreamGenerator] = None,
-        asr_model: t.Optional[WhisperModel] = None,
-        continuous: bool = True,
-        memory_safe: bool = True,
-        device: str = "cpu",
-        verbose: bool = True,
+        model_args: t.Optional[ModelArguments] = None,
+        generator_args: t.Optional[GeneratorArguments] = None,
         func: t.Callable[..., t.Any] = None,
     ):
-        self._inputstream_generator = inputstream_generator if inputstream_generator is not None else self._default_inputstream_generator()
-        self._asr_model = asr_model if asr_model is not None else self._default_asr_model()
+        self._generator = self._create_generator(generator_args) if generator_args is not None else self._create_generator(GeneratorArguments())
+        self._asr_model = self._create_asr_model(model_args) if model_args is not None else self._create_asr_model(ModelArguments())
 
-        self._configure(verbose, memory_safe, device, continuous)
         self.func = func or print
 
     @staticmethod
-    def _default_inputstream_generator() -> InputStreamGenerator:
+    def _create_generator(generator_args: t.Optional[GeneratorArguments] = None) -> InputStreamGenerator:
         # Create and return the default InputStreamGenerator
-        return InputStreamGenerator()
+        return InputStreamGenerator(**asdict(generator_args))
 
-    def _default_asr_model(self) -> WhisperModel:
+    def _create_asr_model(self, model_args) -> WhisperModel:
         # Create and return the default WhisperModel
-        return WhisperModel(self._inputstream_generator)
-
-    def _configure(self, verbose: bool, memory_safe: bool, device: str, continuous: bool):
-        self._inputstream_generator.verbose = verbose
-        self._asr_model.verbose = verbose
-        self._inputstream_generator.memory_safe = memory_safe
-        self._asr_model.device = device
-
-        self._inputstream_generator.continuous = continuous
-        self._asr_model.continuous = continuous
+        return WhisperModel(self._generator, **asdict(model_args))
 
     def create_tasks(self) -> t.Tuple[t.AsyncGenerator, t.AsyncGenerator]:
         """
@@ -92,7 +58,7 @@ class RealtimeTranscriber:
                 - `inputstream_task` (asyncio.Task): The task responsible for processing the audio stream.
                 - `transcribe_task` (asyncio.Task): The task responsible for running ASR inference.
         """
-        inputstream_task = asyncio.create_task(self._inputstream_generator.process_audio())
+        inputstream_task = asyncio.create_task(self._generator.process_audio())
         transcribe_task = asyncio.create_task(self._asr_model.run_inference())
         return inputstream_task, transcribe_task
 
@@ -125,8 +91,8 @@ class RealtimeTranscriber:
 
             # Execute the tasks and catch exceptions
             try:
-                _, transcriptions = await asyncio.gather(inputstream_task, transcribe_task)
-                await self.func(transcriptions)
+                _, model_output = await asyncio.gather(inputstream_task, transcribe_task)
+                await self.func(model_output.transcriptions)
 
             except asyncio.CancelledError:
                 print("\nTranscribe task cancelled.")

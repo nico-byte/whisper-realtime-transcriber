@@ -4,6 +4,8 @@ import sys
 import typing as t
 from copy import deepcopy
 
+from dataclasses import dataclass, field
+
 try:
     import sounddevice as sd
 except OSError as e:
@@ -11,46 +13,46 @@ except OSError as e:
     print("If `GLIBCXX_x.x.x' not found, try installing it with: conda install -c conda-forge libstdcxx-ng=12")
     sys.exit()
 
+@dataclass
+class GeneratorArguments:
+    samplerate: int = field(
+        default=16000,
+        metadata={"help": "The specified samplerate of the audio data."},
+        )
+    blocksize: int = field(
+        default=4000,
+        metadata={"help": "The size of each individual audio chunk."},
+        )
+    adjustment_time: int = field(
+        default=5,
+        metadata={"help": "The adjustment_time for setting the silence threshold."},
+        )
+    min_chunks: int = field(
+        default=6,
+        metadata={"help": "The minimum number of chunks to be generated, before feeding it into the asr model."},
+        )
+    phrase_delta: float = field(
+        default=1.5,
+        metadata={"help": "The expected pause between two phrases in seconds."},
+        )
+    continuous: bool = field(
+        default=True,
+        metadata={"help": "Whether to generate audio data conituously or not."},
+        )
+    memory_safe: bool = field(
+        default=True,
+        metadata={"help": "Whether to pause the generation audio data during the inference of the asr model or not."},
+    )
+    verbose: bool = field(
+        default=True,
+        metadata={"help": "Whether to print the additional information to the console or not."},
+    )
+
+
 
 class InputStreamGenerator:
     """
     Loading and using the InputStreamGenerator.
-
-    Parameters
-    ----------
-    samplerate : int
-        The specified samplerate of the audio data. (default is 16000)
-    blocksize : int
-        The size of each individual audio chunk. (default is 4000)
-    adjustment_time : int
-        The adjustment_time for setting the silence threshold. (default is 5)
-    min_chunks : int
-        The minimum number of chunks to be generated, before feeding it into the asr model. (default is 6)
-    phrase_delta : float
-        The expected pause between two phrases in seconds. (default is 1.5)
-    continuous : bool
-        Whether to generate audio data conituously or not. (default is True)
-    memory_safe: bool
-        Whether to pause the generation audio data during the inference of the asr model or not. (default is True)
-    verbose : bool
-        Whether to print the additional information to the console or not. (default is True)
-
-    Attributes
-    ----------
-    samplerate : int
-        The samplerate of the generated audio data.
-    temp_ndarray : np.ndarray
-        Where the generated audio data is stored.
-    data_ready_event : asyncio.Event
-        Boolean to tell the InputStreamGenerator, that the asr model is busy or not.
-    complete_phrase_event : asyncio.Event
-        Boolean to tell the InputStreamGenerator, that the current phrase is complete.
-    continuous : bool
-        Where the boolean to decide if the InputStreamGenerator runs continuously.
-    memory_safe: bool
-        If True, InputStreamGenerator will pause the collection of audio data during model inference.
-    verbose : bool
-        Where the boolean to decide to print the model outputs is stored.
 
     Methods
     -------
@@ -60,30 +62,23 @@ class InputStreamGenerator:
 
     def __init__(
         self,
-        samplerate: int = 16000,
-        blocksize: int = 4000,
-        adjustment_time: int = 5,
-        min_chunks: int = 6,
-        phrase_delta: float = 1.5,
-        continuous: bool = True,
-        memory_safe: bool = True,
-        verbose: bool = True,
+        generator_args: GeneratorArguments
     ):
-        self.samplerate = samplerate
-        self._blocksize = blocksize
-        self._adjustment_time = adjustment_time
-        self._min_chunks = min_chunks
-        self.continuous = continuous
-        self.memory_safe = memory_safe
-        self.verbose = verbose
+        self.samplerate = generator_args.samplerate
+        self._blocksize = generator_args.blocksize
+        self._adjustment_time = generator_args.adjustment_time
+        self._min_chunks = generator_args.min_chunks
+        self._continuous = generator_args.continuous
+        self._memory_safe = generator_args.memory_safe
+        self._verbose = generator_args.verbose
 
-        self._global_ndarray: np.ndarray = None
-        self.temp_ndarray: np.ndarray = None
+        self._global_ndarray: np.ndarray = np.empty(0, dtype="int16")
+        self.temp_ndarray: np.ndarray = np.empty(0, dtype="int16")
 
-        self._phrase_delta_blocks = (samplerate // blocksize) * phrase_delta
+        self._phrase_delta_blocks: int = int((self.samplerate // self._blocksize) * generator_args.phrase_delta)
         self.complete_phrase_event = asyncio.Event()
 
-        self._silence_threshold = None
+        self._silence_threshold: float = -1
 
         self.data_ready_event = asyncio.Event()
 
@@ -171,13 +166,13 @@ class InputStreamGenerator:
                     empty_blocks = 0
                     self.complete_phrase_event.set()
                     await self._send_audio() if not self.data_ready_event.is_set() else None
-                    if not self.continuous:
+                    if not self._continuous:
                         return None
                 continue
 
             # discard buffers that contain mostly silence
             if (np.percentile(indata_flattened, 10) <= self._silence_threshold and self._global_ndarray is None) or (
-                self.memory_safe and self.data_ready_event.is_set()
+                self._memory_safe and self.data_ready_event.is_set()
             ):
                 continue
 
@@ -245,5 +240,5 @@ class InputStreamGenerator:
                 self._silence_threshold = float(np.percentile(loudness_values, 10))
                 break
 
-        if self.verbose:
+        if self._verbose:
             print(f"Set SILENCE_THRESHOLD to {self._silence_threshold}\n")
