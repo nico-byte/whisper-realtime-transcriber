@@ -3,8 +3,6 @@ import sys
 import typing as t
 from dataclasses import dataclass, asdict
 
-from transformers.models.pop2piano.convert_pop2piano_weights_to_hf import model
-
 from .WhisperModel import WhisperModel, ModelArguments
 from .InputStreamGenerator import InputStreamGenerator, GeneratorArguments
 
@@ -23,11 +21,12 @@ class RealtimeTranscriber:
 
     def __init__(
         self,
-        inputstream_generator: t.Optional[InputStreamGenerator] = None,
         model_args: t.Optional[ModelArguments] = None,
         generator_args: t.Optional[GeneratorArguments] = None,
         func: t.Callable[..., t.Any] = None,
     ):
+        print(asdict(model_args))
+        print(asdict(generator_args))
         self._generator = self._create_generator(generator_args) if generator_args is not None else self._create_generator(GeneratorArguments())
         self._asr_model = self._create_asr_model(model_args) if model_args is not None else self._create_asr_model(ModelArguments())
 
@@ -36,11 +35,11 @@ class RealtimeTranscriber:
     @staticmethod
     def _create_generator(generator_args: t.Optional[GeneratorArguments] = None) -> InputStreamGenerator:
         # Create and return the default InputStreamGenerator
-        return InputStreamGenerator(**asdict(generator_args))
+        return InputStreamGenerator(generator_args)
 
     def _create_asr_model(self, model_args) -> WhisperModel:
         # Create and return the default WhisperModel
-        return WhisperModel(self._generator, **asdict(model_args))
+        return WhisperModel(self._generator, model_args)
 
     def create_tasks(self) -> t.Tuple[t.AsyncGenerator, t.AsyncGenerator]:
         """

@@ -20,7 +20,7 @@ class GeneratorArguments:
         metadata={"help": "The specified samplerate of the audio data."},
         )
     blocksize: int = field(
-        default=4000,
+        default=2000,
         metadata={"help": "The size of each individual audio chunk."},
         )
     adjustment_time: int = field(
@@ -32,17 +32,13 @@ class GeneratorArguments:
         metadata={"help": "The minimum number of chunks to be generated, before feeding it into the asr model."},
         )
     phrase_delta: float = field(
-        default=1.5,
+        default=1.25,
         metadata={"help": "The expected pause between two phrases in seconds."},
         )
     continuous: bool = field(
         default=True,
         metadata={"help": "Whether to generate audio data conituously or not."},
         )
-    memory_safe: bool = field(
-        default=True,
-        metadata={"help": "Whether to pause the generation audio data during the inference of the asr model or not."},
-    )
     verbose: bool = field(
         default=True,
         metadata={"help": "Whether to print the additional information to the console or not."},
@@ -69,11 +65,10 @@ class InputStreamGenerator:
         self._adjustment_time = generator_args.adjustment_time
         self._min_chunks = generator_args.min_chunks
         self._continuous = generator_args.continuous
-        self._memory_safe = generator_args.memory_safe
         self._verbose = generator_args.verbose
 
-        self._global_ndarray: np.ndarray = np.empty(0, dtype="int16")
-        self.temp_ndarray: np.ndarray = np.empty(0, dtype="int16")
+        self._global_ndarray: np.ndarray = None
+        self.temp_ndarray: np.ndarray = None
 
         self._phrase_delta_blocks: int = int((self.samplerate // self._blocksize) * generator_args.phrase_delta)
         self.complete_phrase_event = asyncio.Event()
@@ -152,7 +147,7 @@ class InputStreamGenerator:
             for transcription. If `continuous` mode is disabled, it returns after processing the first valid audio chunk.
         """
 
-        if self._silence_threshold is None:
+        if self._silence_threshold < 0:
             await self._set_silence_threshold()
 
         print("Listening...")
@@ -171,9 +166,7 @@ class InputStreamGenerator:
                 continue
 
             # discard buffers that contain mostly silence
-            if (np.percentile(indata_flattened, 10) <= self._silence_threshold and self._global_ndarray is None) or (
-                self._memory_safe and self.data_ready_event.is_set()
-            ):
+            if ((np.percentile(indata_flattened, 10) <= self._silence_threshold and self._global_ndarray is None)) or self.data_ready_event.is_set():
                 continue
 
             # concatenate buffers

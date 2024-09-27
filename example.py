@@ -2,8 +2,8 @@ import asyncio
 import sys
 import os
 
-from whisper_realtime_transcriber.InputStreamGenerator import InputStreamGenerator
-from whisper_realtime_transcriber.WhisperModel import WhisperModel
+from whisper_realtime_transcriber.InputStreamGenerator import InputStreamGenerator, GeneratorArguments
+from whisper_realtime_transcriber.WhisperModel import WhisperModel, ModelArguments
 from whisper_realtime_transcriber.RealtimeTranscriber import RealtimeTranscriber
 
 
@@ -36,7 +36,10 @@ async def _print_transcriptions(transcriptions: list) -> None:
 
 
 def main():
-    transcriber = RealtimeTranscriber(device="mps", memory_safe=False, continuous=False, func=_print_transcriptions)
+    model_args = ModelArguments(device="mps")
+    generator_args = GeneratorArguments()
+
+    transcriber = RealtimeTranscriber(model_args, generator_args, func=_print_transcriptions)
 
     asyncio.run(transcriber.execute_event_loop())
 

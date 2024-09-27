@@ -24,6 +24,14 @@ class ModelOutput:
 class ModelArguments:
     """
     Arguments for creating the whisper model.
+
+    Attributes:
+        model_id (Optional[str]): The model ID to be used for loading the model. Default is None.
+        model_size (str): The size of the model to be used for inference. Default is "small".
+                          Possible choices are "small", "medium", and "large-v3".
+        device (str): The device to be used for inference. Default is "cpu". Possible choices are "cpu", "cuda", and "mps".
+        continuous (bool): Whether to generate audio data continuously or not. Default is True.
+        verbose (bool): Whether to print the model outputs to the console or not. Default is True.
     """
     model_id: t.Optional[str] = field(
         default=None,
@@ -69,8 +77,10 @@ class WhisperModel:
         self._continuous = model_args.continuous
 
         self._device = set_device(model_args.device)
+        print(model_args)
 
-        self._working: bool = False
+        self._working: asyncio.Event = asyncio.Event()
+        self._working.set()
 
         self._torch_dtype = torch.float16 if self._device == torch.device("cuda") else torch.float32
         if self._device == torch.device("cuda"):
@@ -78,7 +88,7 @@ class WhisperModel:
 
         self._load_model(model_args.model_size, model_args.model_id)
 
-        self.audio_data: np.ndarray = np.empty(0, dtype="int16")
+        self.audio_data: np.ndarray = None
 
         self._output = ModelOutput([torch.empty(0, 1)], [""])
 
@@ -156,13 +166,12 @@ class WhisperModel:
         while True:
             await self._inputstream_generator.data_ready_event.wait()
 
-            if not self._working:
-                await self._transcribe()
-            else:
-                continue
+            await self._working.wait()
+
+            await self._transcribe()
 
             if self._inputstream_generator.complete_phrase_event.is_set() or not self._continuous:
-                self.audio_data: np.ndarray = np.empty(0, dtype=np.int16)
+                self.audio_data: np.ndarray = None
                 self._output.logits.append(torch.empty(0, 1))
                 self._output.transcriptions.append("")
                 self._inputstream_generator.data_ready_event.clear()
@@ -178,20 +187,17 @@ class WhisperModel:
             if not self._verbose:
                 continue
 
-            asyncio.to_thread(self._print_transcriptions)
+            await asyncio.to_thread(self._print_transcriptions)
 
     async def _transcribe(self) -> None:
         """
         Main logic for running the actual inference on the models.
         """
-        self._working = True
-
-        a1 = self.audio_data
-        a2 = self._inputstream_generator.temp_ndarray
+        self._working.clear()
 
         # Convert raw audio data to feasible input for the model.
         self.audio_data = (
-            np.concatenate((a1, a2), axis=0, dtype="int16")
+            np.concatenate((self.audio_data, self._inputstream_generator.temp_ndarray), axis=0, dtype="int16")
             if self.audio_data is not None
             else self._inputstream_generator.temp_ndarray
         )
@@ -227,7 +233,7 @@ class WhisperModel:
         self._output.transcriptions[-1] = transcript[-1].strip()
         self._output.logits[-1] = generated_ids[-1]
 
-        self._working = False
+        self._working.set()
 
     def _print_transcriptions(self) -> None:
         """
